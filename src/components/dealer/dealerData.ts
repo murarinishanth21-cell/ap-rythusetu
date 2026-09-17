@@ -7,6 +7,7 @@ import type {
   StockInventoryItem,
   NegotiationOffer
 } from './types';
+import { DISTRICT_DATA, normalizeDistrictName, getCropImage } from '../../districtData';
 
 export const CURRENT_DEALER: DealerUser = {
   id: "AP-DLR-2026-3044",
@@ -157,19 +158,55 @@ export const INITIAL_FARMER_LISTINGS: FarmerListing[] = [
     id: "lst-5",
     farmerName: "Ramesh Kumar",
     farmerInitials: "RK",
-    mandal: "Bapatla Mandal",
+    mandal: "Tadikonda Mandal",
     district: "Guntur",
-    cropName: "Tobacco (FCV)",
-    cropVariety: "FCV Medium",
+    cropName: "Cotton (Kapas)",
+    cropVariety: "MCU-5 Long Staple",
     grade: "Grade A",
-    image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?q=80&w=600&auto=format&fit=crop",
-    availableVolumeQuintals: 320,
-    askingPricePerQuintal: 4850,
+    image: "https://images.unsplash.com/photo-1605000797499-95a51c5269ae?q=80&w=600&auto=format&fit=crop",
+    availableVolumeQuintals: 220,
+    askingPricePerQuintal: 7600,
     listedTime: "6 Sep 2025",
     verified: true,
     dealsCount: 22,
     rating: 4.9,
     completionRate: 100
+  },
+  {
+    id: "lst-6",
+    farmerName: "K. Venkateswarlu",
+    farmerInitials: "KV",
+    mandal: "Kovvur Mandal",
+    district: "East Godavari",
+    cropName: "Paddy (MTU 1010)",
+    cropVariety: "MTU 1010 Swarna",
+    grade: "Grade A",
+    image: "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?q=80&w=600&auto=format&fit=crop",
+    availableVolumeQuintals: 450,
+    askingPricePerQuintal: 2320,
+    listedTime: "Today, 11:00 AM",
+    verified: true,
+    dealsCount: 31,
+    rating: 4.9,
+    completionRate: 99
+  },
+  {
+    id: "lst-7",
+    farmerName: "B. Nagaraju",
+    farmerInitials: "BN",
+    mandal: "Kadiri Mandal",
+    district: "Sri Sathya Sai",
+    cropName: "Groundnut (K-6)",
+    cropVariety: "Kadiri Lepakshi",
+    grade: "Grade A Bold",
+    image: "https://images.unsplash.com/photo-1563245372-f21724e3856d?q=80&w=600&auto=format&fit=crop",
+    availableVolumeQuintals: 180,
+    askingPricePerQuintal: 7450,
+    listedTime: "Today, 10:15 AM",
+    verified: true,
+    dealsCount: 16,
+    rating: 4.8,
+    completionRate: 97
   }
 ];
 
@@ -440,3 +477,41 @@ export const INITIAL_OFFER_HISTORY: NegotiationOffer[] = [
     message: "Price is too low. Can you offer ₹18,000?"
   }
 ];
+
+export function getDistrictFarmerListings(districtName: string): FarmerListing[] {
+  const norm = normalizeDistrictName(districtName);
+  const detail = DISTRICT_DATA[norm] || DISTRICT_DATA["Guntur"];
+
+  const sampleFarmers = [
+    { name: "Venkata Ramana", initials: "VR" },
+    { name: "K. Subba Rao", initials: "KS" },
+    { name: "M. Chenna Reddy", initials: "MC" },
+    { name: "P. Appa Rao", initials: "PA" }
+  ];
+
+  return detail.crops.map((crop, idx) => {
+    const f = sampleFarmers[idx % sampleFarmers.length];
+    const pNum = crop.priceNum || 2500;
+    const arrivalNum = parseInt(crop.arrival.replace(/[^0-9]/g, '')) || 25;
+
+    return {
+      id: `lst-${norm.toLowerCase().replace(/[^a-z]/g, '')}-${idx}`,
+      farmerName: `${f.name}`,
+      farmerInitials: f.initials,
+      mandal: `${norm} Regional Market`,
+      district: norm,
+      cropName: crop.name,
+      cropVariety: crop.variety || 'Standard FAQ',
+      grade: "Grade A1 FAQ",
+      image: crop.image || getCropImage(crop.name),
+      availableVolumeQuintals: arrivalNum * 10,
+      askingPricePerQuintal: pNum,
+      listedTime: "Live Mandi",
+      verified: true,
+      dealsCount: 12 + idx * 3,
+      rating: 4.8,
+      completionRate: 98
+    };
+  });
+}
+

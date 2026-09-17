@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck,
   Search,
@@ -7,7 +7,7 @@ import {
   RefreshCw,
   ChevronRight
 } from 'lucide-react';
-import { DISTRICT_LIST, DISTRICT_DATA } from '../../../districtData';
+import { DISTRICT_LIST, DISTRICT_DATA, getDistrictCropGradeSpecs } from '../../../districtData';
 import { api } from '../../../api';
 import type { DealerActiveTab } from '../DealerSidebar';
 
@@ -356,10 +356,30 @@ export const CropsGradesView: React.FC<CropsGradesViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('All');
-  const [selectedCrop, setSelectedCrop] = useState<CropGradeSpec>(AP_CROP_GRADE_SPECS[0]);
+
+  // Dynamically compute the 4 regional crops for this exact district
+  const districtSpecs = useMemo(() => {
+    return getDistrictCropGradeSpecs(selectedDistrict);
+  }, [selectedDistrict]);
+
+  const [selectedCrop, setSelectedCrop] = useState<CropGradeSpec>(districtSpecs[0] || AP_CROP_GRADE_SPECS[0]);
   const [liveArrivalsCount, setLiveArrivalsCount] = useState<number>(1420);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<string>('Just now');
+
+  // Synchronize when district prop changes from interactive map or header
+  useEffect(() => {
+    if (district) {
+      setSelectedDistrict(district);
+    }
+  }, [district]);
+
+  // Keep selected crop in sync when district changes
+  useEffect(() => {
+    if (districtSpecs && districtSpecs.length > 0) {
+      setSelectedCrop(districtSpecs[0]);
+    }
+  }, [districtSpecs]);
 
   // Load live marketplace figures to ground data in real-time
   useEffect(() => {
@@ -399,8 +419,8 @@ export const CropsGradesView: React.FC<CropsGradesViewProps> = ({
     }
   };
 
-  // Filter crops by search query and category
-  const filteredCrops = AP_CROP_GRADE_SPECS.filter((crop) => {
+  // Filter district crops by search query and category
+  const filteredCrops = districtSpecs.filter((crop) => {
     const matchesSearch =
       crop.cropName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       crop.teluguName.includes(searchQuery) ||

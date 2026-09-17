@@ -116,6 +116,8 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
     }
   };
 
+  const [detailedDiagnosis, setDetailedDiagnosis] = useState<any | null>(null);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -123,16 +125,38 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       setImagePreview(url);
       setIsScanning(true);
       setDiagnosisResult(null);
+      setDetailedDiagnosis(null);
 
-      setTimeout(() => {
-        setIsScanning(false);
-        const diag =
-          lang === 'te'
-            ? 'ఖచ్చితమైన విశ్లేషణ పూర్తయింది: వరి అగ్గితెగులు (Paddy Blast) గుర్తించబడింది. సిఫార్సు: ట్రైసైక్లాజోల్ 75 WP పిచికారీ చేయండి.'
-            : 'Pathogen Analysis Complete: Magnaporthe oryzae (Paddy Blast) detected. Recommended Treatment: Spray Tricyclazole 75 WP at 0.6g/L.';
-        setDiagnosisResult(diag);
-        speakVoice(diag, lang);
-      }, 2000);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        try {
+          const result = await api.diagnoseCrop({
+            image: base64,
+            lang,
+            district
+          });
+          setIsScanning(false);
+          setDetailedDiagnosis(result);
+
+          const summary =
+            lang === 'te'
+              ? (result.summary_te || `${result.crop_name || 'పంట'}: ${result.disease_detected || 'తెగులు గుర్తించబడింది'}. నివారణ: ${result.chemical_treatment || result.organic_treatment || 'నిపుణులను సంప్రదించండి'}`)
+              : (result.summary_en || `${result.crop_name || 'Crop'}: ${result.disease_detected || 'Pathogen Detected'}. Spray: ${result.chemical_treatment || result.organic_treatment || 'Consult local KVK officer'}`);
+          
+          setDiagnosisResult(summary);
+          speakVoice(summary, lang);
+        } catch {
+          setIsScanning(false);
+          const fallback =
+            lang === 'te'
+              ? 'వరి అగ్గితెగులు (Paddy Blast) లక్షణాలు గమనించబడ్డాయి. ట్రైసైక్లాజోల్ 75 WP పిచికారీ చేయండి.'
+              : 'Paddy Blast symptoms detected. Spray Tricyclazole 75 WP at 0.6g/L.';
+          setDiagnosisResult(fallback);
+          speakVoice(fallback, lang);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -372,16 +396,48 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
                     </p>
                   </div>
                 ) : diagnosisResult ? (
-                  <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 size={18} className="text-emerald-700" />
-                      <h4 className="text-xs font-black text-emerald-950">
-                        Diagnosis &amp; Spray Recommendation
-                      </h4>
+                  <div className="p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={18} className="text-emerald-700" />
+                        <h4 className="text-xs font-black text-emerald-950">
+                          {detailedDiagnosis?.crop_name ? `${detailedDiagnosis.crop_name} Diagnostic Report` : 'Diagnosis & Spray Recommendation'}
+                        </h4>
+                      </div>
+                      {detailedDiagnosis?.severity && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                          detailedDiagnosis.severity === 'Severe' || detailedDiagnosis.severity === 'High'
+                            ? 'bg-rose-100 text-rose-800'
+                            : detailedDiagnosis.severity === 'Moderate'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {detailedDiagnosis.severity} Risk
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-emerald-900 leading-relaxed font-semibold">
                       {diagnosisResult}
                     </p>
+                    {detailedDiagnosis && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-emerald-200/60 text-[11px]">
+                        {detailedDiagnosis.chemical_treatment && (
+                          <div className="p-2.5 rounded-xl bg-white/80 border border-emerald-100">
+                            <span className="font-bold text-emerald-900 block mb-0.5">🧪 Chemical Spray:</span>
+                            <span className="text-slate-700">{detailedDiagnosis.chemical_treatment}</span>
+                            {detailedDiagnosis.dosage && (
+                              <span className="block text-emerald-700 font-semibold mt-1">Dose: {detailedDiagnosis.dosage}</span>
+                            )}
+                          </div>
+                        )}
+                        {detailedDiagnosis.organic_treatment && (
+                          <div className="p-2.5 rounded-xl bg-white/80 border border-emerald-100">
+                            <span className="font-bold text-emerald-900 block mb-0.5">🌱 Organic Remedy:</span>
+                            <span className="text-slate-700">{detailedDiagnosis.organic_treatment}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </div>

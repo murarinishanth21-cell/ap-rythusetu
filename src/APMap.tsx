@@ -77,7 +77,7 @@ export default function APMap({
       .catch(console.error);
   }, []);
 
-  const activeDistrictName = hoveredDistrict || selectedDistrict || "Guntur";
+  const activeDistrictName = selectedDistrict || "Guntur";
   const activeDetail: DistrictDetail = DISTRICT_DATA[normalizeDistrictName(activeDistrictName)] || DISTRICT_DATA["Guntur"];
 
   // Reset selected crop index when active district changes
@@ -161,6 +161,7 @@ export default function APMap({
         <svg 
           viewBox="0 0 640 540" 
           className="w-full h-full max-h-[520px] select-none"
+          onMouseLeave={() => setHoveredDistrict(null)}
           style={{ filter: "drop-shadow(0 12px 24px rgba(4, 120, 87, 0.18))" }}
         >
           <defs>
@@ -189,7 +190,10 @@ export default function APMap({
                   className="cursor-pointer transition-all duration-200"
                   onMouseEnter={() => setHoveredDistrict(item.normName)}
                   onMouseLeave={() => setHoveredDistrict(null)}
-                  onClick={() => onSelectDistrict(item.normName)}
+                  onClick={() => {
+                    onSelectDistrict(item.normName);
+                    setHoveredDistrict(null);
+                  }}
                 >
                   <title>{item.normName} District - Click to Select</title>
                 </path>
@@ -254,7 +258,7 @@ export default function APMap({
             </h3>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Click any district to reveal real-time mandi prices, regional crop suitability, and live profit estimations.
+            Click any district on the map to inspect real-time mandi prices, regional crop suitability, and live profit estimations.
           </p>
         </div>
 
@@ -281,6 +285,7 @@ export default function APMap({
           <svg 
             viewBox="0 0 640 540" 
             className="w-full h-full max-h-[520px] select-none"
+            onMouseLeave={() => setHoveredDistrict(null)}
             style={{ filter: "drop-shadow(0 12px 24px rgba(4, 120, 87, 0.18))" }}
           >
             <defs>
@@ -309,7 +314,11 @@ export default function APMap({
                     className="cursor-pointer transition-all duration-200"
                     onMouseEnter={() => setHoveredDistrict(item.normName)}
                     onMouseLeave={() => setHoveredDistrict(null)}
-                    onClick={() => onSelectDistrict(item.normName)}
+                    onClick={() => {
+                      onSelectDistrict(item.normName);
+                      setHoveredDistrict(null);
+                      setSelectedCropIndex(0);
+                    }}
                   />
                 );
               })}
@@ -356,6 +365,14 @@ export default function APMap({
             <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
             <span>Click any AP district on map to inspect</span>
           </div>
+
+          {/* Hover preview tooltip */}
+          {hoveredDistrict && hoveredDistrict !== activeDetail.name && (
+            <div className="absolute top-3 left-3 bg-[#062419]/90 backdrop-blur-xs text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-500/30 shadow-lg pointer-events-none flex items-center gap-2 z-10 animate-in fade-in duration-150">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>📍 {hoveredDistrict} (Click to inspect crops)</span>
+            </div>
+          )}
 
           <div className="absolute top-3 right-3 bg-emerald-950/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-emerald-700/50">
             Govt. AP Agro-Climatic Zone
@@ -420,7 +437,7 @@ export default function APMap({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[310px] overflow-y-auto pr-1">
                   {activeDetail.crops.map((crop, idx) => {
                     const isSelectedCrop = selectedCropIndex === idx;
                     return (

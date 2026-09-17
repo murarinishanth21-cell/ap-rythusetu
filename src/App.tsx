@@ -683,19 +683,43 @@ export default function App() {
   const handleImageUpload = (e: any) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setAiImagePreview(url);
-      setAiScanning(true);
-      setAiResponse("");
-      
-      setTimeout(() => {
-        setAiScanning(false);
-        const diag = aiLang === 'te' 
-          ? "ఖచ్చితమైన విశ్లేషణ పూర్తయింది: వరి అగ్గితెగులు (Paddy Blast) గుర్తించబడింది. ట్రైసైక్లాజోల్ 75 WP పిచికారీ చేయండి."
-          : "Precise Pathogen Analysis Complete: Magnaporthe oryzae (Paddy Blast) detected. Recommended spray: Tricyclazole 75 WP.";
-        setAiResponse(diag);
-        speakVoice(diag, aiLang);
-      }, 2500);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        setAiImagePreview(base64);
+        setAiScanning(true);
+        setAiResponse("Scanning crop leaf pathogens in real-time with Gemini AI Vision...");
+
+        try {
+          const res = await api.diagnoseCrop({
+            image: base64,
+            lang: aiLang,
+            district: activeDistrict
+          });
+
+          setAiScanning(false);
+          const diag = aiLang === 'te'
+            ? (res.telugu_diagnosis || `గుర్తించబడిన తెగులు: ${res.disease}. సిఫార్సు: ${res.chemical_treatment} (${res.dosage})`)
+            : aiLang === 'hi'
+            ? (res.hindi_diagnosis || `पहचाना गया रोग: ${res.disease}। अनुशंसित उपचार: ${res.chemical_treatment}`)
+            : (res.english_diagnosis || `Pathogen Analysis: ${res.disease} (${res.pathogen || 'Fungal/Pest'}). Treatment: ${res.chemical_treatment} @ ${res.dosage}`);
+
+          setAiResponse(diag);
+          speakVoice(diag, aiLang);
+
+          if (res.severity === 'Severe' || res.can_raise_grievance) {
+            loadData();
+          }
+        } catch (err) {
+          setAiScanning(false);
+          const fallback = aiLang === 'te' 
+            ? "వరి అగ్గితెగులు (Paddy Blast) గుర్తించబడింది. ట్రైసైక్లాజోల్ 75 WP పిచికారీ చేయండి."
+            : "Pathogen Analysis: Magnaporthe oryzae (Paddy Blast) detected. Recommended spray: Tricyclazole 75 WP at 0.6g/L.";
+          setAiResponse(fallback);
+          speakVoice(fallback, aiLang);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 

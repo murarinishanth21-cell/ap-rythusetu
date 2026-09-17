@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DealerSidebar, type DealerActiveTab } from './DealerSidebar';
 import { DealerHeader, type UserProfile } from './DealerHeader';
 import { DashboardView } from './views/DashboardView';
@@ -21,11 +21,10 @@ import { OtherDealerViews } from './views/OtherDealerViews';
 import { api } from '../../api';
 import {
   CURRENT_DEALER,
-  INITIAL_MARKET_OVERVIEWS,
-  INITIAL_FARMER_LISTINGS
+  getDistrictFarmerListings
 } from './dealerData';
 import type { FarmerListing, CropMarketOverview, DealerUser } from './types';
-import { DISTRICT_LIST } from '../../districtData';
+import { DISTRICT_LIST, getDistrictMarketOverviews, getCropImage } from '../../districtData';
 import {
   X,
   Send,
@@ -233,12 +232,24 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [globalSearch, setGlobalSearch] = useState<string>('');
 
+  // Keep activeDistrict synced with initialDistrict prop
+  useEffect(() => {
+    if (initialDistrict) {
+      setActiveDistrict(initialDistrict);
+    }
+  }, [initialDistrict]);
+
+  // Dynamically calculate marketOverviews for the active district
+  const marketOverviews = useMemo<CropMarketOverview[]>(() => {
+    return getDistrictMarketOverviews(activeDistrict);
+  }, [activeDistrict]);
+
   // Live state for listings & selected deal item
-  const [listings, setListings] = useState<FarmerListing[]>(INITIAL_FARMER_LISTINGS);
-  const [marketOverviews] = useState<CropMarketOverview[]>(INITIAL_MARKET_OVERVIEWS);
-  const [selectedListingForDeal, setSelectedListingForDeal] = useState<FarmerListing | undefined>(
-    INITIAL_FARMER_LISTINGS[0]
-  );
+  const [listings, setListings] = useState<FarmerListing[]>(() => getDistrictFarmerListings(initialDistrict));
+  const [selectedListingForDeal, setSelectedListingForDeal] = useState<FarmerListing | undefined>(() => {
+    const init = getDistrictFarmerListings(initialDistrict);
+    return init[0];
+  });
 
   // Modals
   const [newEnquiryModalOpen, setNewEnquiryModalOpen] = useState(false);
@@ -268,12 +279,12 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
               .slice(0, 2),
             mandal: item.mandal || `${activeDistrict} Mandal`,
             district: item.district || activeDistrict,
-            cropName: item.crop_name || 'Chilli',
-            cropVariety: item.variety || 'Standard',
-            grade: item.grade || 'Grade A',
-            image: item.image || 'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?q=80&w=600&auto=format&fit=crop',
-            availableVolumeQuintals: Number(item.quantity_quintals) || 100,
-            askingPricePerQuintal: Number(item.price) || 18000,
+            cropName: item.crop || item.crop_name || item.cropName || 'Produce',
+            cropVariety: item.variety || item.cropVariety || 'Standard',
+            grade: item.quality || item.grade || 'Grade A1 FAQ',
+            image: item.image_url || item.image || getCropImage(item.crop || item.crop_name),
+            availableVolumeQuintals: Number(item.qty || item.quantity_quintals || item.availableVolumeQuintals) || 100,
+            askingPricePerQuintal: Number(item.price || item.askingPricePerQuintal) || 2500,
             listedTime: 'Real-time',
             verified: true,
             dealsCount: 14,
@@ -281,9 +292,18 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
             completionRate: 99
           }));
           setListings(mapped);
+          if (mapped.length > 0) setSelectedListingForDeal(mapped[0]);
+        } else if (mounted) {
+          const fallback = getDistrictFarmerListings(activeDistrict);
+          setListings(fallback);
+          if (fallback.length > 0) setSelectedListingForDeal(fallback[0]);
         }
       } catch {
-        // Fallback to offline cached data
+        if (mounted) {
+          const fallback = getDistrictFarmerListings(activeDistrict);
+          setListings(fallback);
+          if (fallback.length > 0) setSelectedListingForDeal(fallback[0]);
+        }
       }
     };
 

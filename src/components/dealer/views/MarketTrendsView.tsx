@@ -54,7 +54,7 @@ export const MarketTrendsView: React.FC<MarketTrendsViewProps> = ({
     return true;
   });
 
-  const cropPills = ['All Crops', 'Chilli', 'Paddy', 'Tobacco', 'Turmeric', 'Maize'];
+  const cropPills = ['All Crops', ...Array.from(new Set(marketOverviews.map(c => c.cropName)))];
 
   // Chart data based on selected crop
   const chartDatasets: Record<string, { date: string; price: number }[]> = {
@@ -66,55 +66,25 @@ export const MarketTrendsView: React.FC<MarketTrendsViewProps> = ({
       { date: 'Sep 14', price: 18200 },
       { date: 'Sep 15', price: 16800 },
       { date: 'Sep 16', price: 18900 }
-    ],
-    Chilli: [
-      { date: 'Sep 10', price: 16800 },
-      { date: 'Sep 11', price: 17200 },
-      { date: 'Sep 12', price: 17800 },
-      { date: 'Sep 13', price: 18500 },
-      { date: 'Sep 14', price: 18300 },
-      { date: 'Sep 15', price: 18100 },
-      { date: 'Sep 16', price: 18700 }
-    ],
-    Paddy: [
-      { date: 'Sep 10', price: 2050 },
-      { date: 'Sep 11', price: 2080 },
-      { date: 'Sep 12', price: 2100 },
-      { date: 'Sep 13', price: 2120 },
-      { date: 'Sep 14', price: 2140 },
-      { date: 'Sep 15', price: 2130 },
-      { date: 'Sep 16', price: 2160 }
-    ],
-    Tobacco: [
-      { date: 'Sep 10', price: 5050 },
-      { date: 'Sep 11', price: 5000 },
-      { date: 'Sep 12', price: 4950 },
-      { date: 'Sep 13', price: 4900 },
-      { date: 'Sep 14', price: 4880 },
-      { date: 'Sep 15', price: 4850 },
-      { date: 'Sep 16', price: 4830 }
-    ],
-    Turmeric: [
-      { date: 'Sep 10', price: 8600 },
-      { date: 'Sep 11', price: 8750 },
-      { date: 'Sep 12', price: 8900 },
-      { date: 'Sep 13', price: 9050 },
-      { date: 'Sep 14', price: 9120 },
-      { date: 'Sep 15', price: 9180 },
-      { date: 'Sep 16', price: 9250 }
-    ],
-    Maize: [
-      { date: 'Sep 10', price: 2080 },
-      { date: 'Sep 11', price: 2100 },
-      { date: 'Sep 12', price: 2110 },
-      { date: 'Sep 13', price: 2130 },
-      { date: 'Sep 14', price: 2140 },
-      { date: 'Sep 15', price: 2135 },
-      { date: 'Sep 16', price: 2150 }
     ]
   };
 
-  const chartData = chartDatasets[selectedCrop] || chartDatasets['All Crops'];
+  const getDynamicChartData = (crop: string) => {
+    if (chartDatasets[crop]) return chartDatasets[crop];
+    const match = marketOverviews.find(c => c.cropName === crop);
+    const baseP = match ? match.currentPrice : 4500;
+    return [
+      { date: 'Sep 10', price: Math.round(baseP * 0.94) },
+      { date: 'Sep 11', price: Math.round(baseP * 0.96) },
+      { date: 'Sep 12', price: Math.round(baseP * 0.95) },
+      { date: 'Sep 13', price: Math.round(baseP * 0.98) },
+      { date: 'Sep 14', price: Math.round(baseP * 0.99) },
+      { date: 'Sep 15', price: Math.round(baseP * 0.97) },
+      { date: 'Sep 16', price: baseP }
+    ];
+  };
+
+  const chartData = selectedCrop === 'All Crops' ? chartDatasets['All Crops'] : getDynamicChartData(selectedCrop);
 
   // Calculate SVG coordinates
   const svgWidth = 720;
@@ -124,12 +94,13 @@ export const MarketTrendsView: React.FC<MarketTrendsViewProps> = ({
   const padTop = 20;
   const padBottom = 40;
 
-  const minPrice = selectedCrop === 'Paddy' || selectedCrop === 'Maize' ? 1800 : selectedCrop === 'Tobacco' ? 4000 : 5000;
-  const maxPrice = selectedCrop === 'Paddy' || selectedCrop === 'Maize' ? 2400 : selectedCrop === 'Tobacco' ? 5400 : 25000;
+  const allPrices = chartData.map(d => d.price);
+  const minPrice = Math.max(0, Math.floor(Math.min(...allPrices) * 0.85));
+  const maxPrice = Math.ceil(Math.max(...allPrices) * 1.15) || 10000;
 
   const points = chartData.map((d, index) => {
-    const x = padLeft + (index / (chartData.length - 1)) * (svgWidth - padLeft - padRight);
-    const y = svgHeight - padBottom - ((d.price - minPrice) / (maxPrice - minPrice)) * (svgHeight - padTop - padBottom);
+    const x = padLeft + (index / Math.max(1, chartData.length - 1)) * (svgWidth - padLeft - padRight);
+    const y = svgHeight - padBottom - ((d.price - minPrice) / Math.max(1, maxPrice - minPrice)) * (svgHeight - padTop - padBottom);
     return { ...d, x, y };
   });
 
