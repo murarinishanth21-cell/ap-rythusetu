@@ -12,8 +12,16 @@ import {
   Phone,
   LayoutGrid,
   List,
-  ChevronDown
+  ChevronDown,
+  Compass
 } from 'lucide-react';
+import APMap from '../../../APMap';
+import {
+  DISTRICT_DATA,
+  normalizeDistrictName,
+  getDistrictWeather,
+  DISTRICT_LIST
+} from '../../../districtData';
 import type { FarmerListing } from '../types';
 
 interface BuyProduceViewProps {
@@ -22,6 +30,7 @@ interface BuyProduceViewProps {
   onSelectListingForDeal: (listing: FarmerListing) => void;
   onOpenNewEnquiryModal: () => void;
   initialSearchQuery?: string;
+  onChangeDistrict?: (district: string) => void;
 }
 
 export const BuyProduceView: React.FC<BuyProduceViewProps> = ({
@@ -29,7 +38,8 @@ export const BuyProduceView: React.FC<BuyProduceViewProps> = ({
   listings,
   onSelectListingForDeal,
   onOpenNewEnquiryModal,
-  initialSearchQuery = ''
+  initialSearchQuery = '',
+  onChangeDistrict
 }) => {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
 
@@ -44,6 +54,10 @@ export const BuyProduceView: React.FC<BuyProduceViewProps> = ({
   const [selectedPriceRange, setSelectedPriceRange] = useState('Any Price');
   const [selectedVolume, setSelectedVolume] = useState('Any Volume');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [showMap, setShowMap] = useState(true);
+
+  const districtDetail = DISTRICT_DATA[normalizeDistrictName(district)] || DISTRICT_DATA['Guntur'];
+  const weather = getDistrictWeather(district);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -153,6 +167,127 @@ export const BuyProduceView: React.FC<BuyProduceViewProps> = ({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Integrated AP 26-District Geo-Procurement Map for Dealers */}
+      <div className="bg-white rounded-3xl p-5 lg:p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+              <Compass size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm lg:text-base font-black text-slate-900">
+                AP 26-District Mandi Map • Direct Procurement Explorer
+              </h2>
+              <p className="text-[11px] text-slate-400">
+                Click any district on the map to switch mandi jurisdiction and view verified farmer lots
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-500">Selected Mandi:</span>
+            <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black">
+              📍 {district} District
+            </span>
+            {onChangeDistrict && (
+              <select
+                value={district}
+                onChange={(e) => onChangeDistrict(e.target.value)}
+                className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-slate-700 focus:outline-hidden"
+              >
+                {DISTRICT_LIST.map((d) => (
+                  <option key={d} value={d}>{d} Mandis</option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={() => setShowMap(!showMap)}
+              className="text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-xl transition-colors"
+            >
+              {showMap ? 'Hide Map ▲' : 'Show Map ▼'}
+            </button>
+          </div>
+        </div>
+
+        {showMap && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            {/* Left: Vector AP Map */}
+            <div className="lg:col-span-7 h-[420px] flex items-center justify-center overflow-hidden rounded-2xl bg-slate-50/40 border border-slate-100">
+              <APMap
+                selectedDistrict={district}
+                onSelectDistrict={(d) => onChangeDistrict && onChangeDistrict(d)}
+                standaloneMapOnly={true}
+              />
+            </div>
+
+            {/* Right: District Intelligence & Modal Rates */}
+            <div className="lg:col-span-5 space-y-3.5">
+              <div className="p-4 bg-gradient-to-br from-emerald-950 to-[#062419] text-white rounded-2xl space-y-2.5 shadow-md">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded">
+                      Selected Mandi Jurisdiction
+                    </span>
+                    <h3 className="text-lg font-black text-white mt-1">
+                      {districtDetail.name} District
+                    </h3>
+                    <p className="text-xs text-emerald-200/80">{districtDetail.tagline}</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-xl bg-white/10 text-xs font-black text-emerald-300 border border-white/10">
+                    {filteredListings.length} Active Lots
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10 text-[11px]">
+                  <div>
+                    <p className="text-emerald-300 text-[10px]">Temp</p>
+                    <p className="font-bold text-white">{weather.currentTemp}°C</p>
+                  </div>
+                  <div>
+                    <p className="text-emerald-300 text-[10px]">Soil Profile</p>
+                    <p className="font-bold text-white truncate">{districtDetail.soilType}</p>
+                  </div>
+                  <div>
+                    <p className="text-emerald-300 text-[10px]">Active Farmers</p>
+                    <p className="font-bold text-white">{districtDetail.activeFarmers.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Major Harvest Produce in this district */}
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-black text-slate-800">Primary Mandi Crops ({district})</span>
+                  <span className="text-[10px] text-emerald-700 font-bold">Modal Rates</span>
+                </div>
+                <div className="space-y-1.5">
+                  {districtDetail.crops.slice(0, 3).map((crop) => (
+                    <div
+                      key={crop.name}
+                      onClick={() => setSelectedCrop(crop.name)}
+                      className="flex items-center justify-between p-2 bg-white hover:bg-emerald-50/60 rounded-xl border border-slate-200/80 text-xs cursor-pointer transition-colors"
+                      title={`Filter listings by ${crop.name}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🌱</span>
+                        <div>
+                          <p className="font-bold text-slate-900">{crop.name}</p>
+                          <p className="text-[10px] text-slate-400">Modal Yield: {crop.yieldPerAcre}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-emerald-700">{crop.price}</p>
+                        <p className="text-[9px] text-emerald-600 font-bold">Filter by this</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filter Card: Find the Right Produce */}

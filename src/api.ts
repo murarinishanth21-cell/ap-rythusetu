@@ -199,6 +199,33 @@ export const api = {
     }
   ),
 
+  createGrievance: (data: any): Promise<any> => safeFetch(
+    () => fetch(`${BASE_URL}/grievances`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }),
+    () => {
+      const grievances = getLocal<any[]>('grievances', []);
+      const newId = (grievances.length > 0 ? Math.max(...grievances.map((g: any) => Number(g.id) || 0)) : 100) + 1;
+      const item = {
+        id: newId,
+        user_id: data.user_id || 'AP-USER',
+        user_name: data.user_name || 'Farmer',
+        user_role: data.user_role || 'farmer',
+        district: data.district || 'Guntur',
+        category: data.category || 'Farmer Grievance',
+        description: data.description,
+        translated_text: data.translated_text || data.description,
+        status: 'Open',
+        created_at: new Date().toISOString()
+      };
+      grievances.unshift(item);
+      setLocal('grievances', grievances);
+      return { success: true, id: newId, ticket_id: newId };
+    }
+  ),
+
   updateGrievanceStatus: (id: number, status: string, admin_remark?: string): Promise<any> => safeFetch(
     () => fetch(`${BASE_URL}/grievances/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, admin_remark }) }),
     () => {

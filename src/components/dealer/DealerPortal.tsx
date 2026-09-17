@@ -8,7 +8,6 @@ import { DealAndAskView } from './views/DealAndAskView';
 import { PriceAlertsView } from './views/PriceAlertsView';
 import { StockInventoryView } from './views/StockInventoryView';
 import { FarmerSellView } from './views/FarmerSellView';
-import { APMapExplorerView } from './views/APMapExplorerView';
 import { ProfitCalculatorView } from './views/ProfitCalculatorView';
 import { AIAssistantView } from './views/AIAssistantView';
 import { TransportFleetView } from './views/TransportFleetView';
@@ -509,6 +508,7 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
           {activeTab === 'buy_produce' && (
             <BuyProduceView
               district={activeDistrict}
+              onChangeDistrict={(d) => setActiveDistrict(d)}
               listings={listings}
               initialSearchQuery={globalSearch}
               onSelectListingForDeal={handleSelectListingForDeal}
@@ -561,10 +561,13 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
           )}
 
           {activeTab === 'ap_map' && (
-            <APMapExplorerView
-              activeDistrict={activeDistrict}
-              onSelectDistrict={(d) => setActiveDistrict(d)}
-              onNavigateToProduce={() => setActiveTab('buy_produce')}
+            <BuyProduceView
+              district={activeDistrict}
+              onChangeDistrict={(d) => setActiveDistrict(d)}
+              listings={listings}
+              initialSearchQuery={globalSearch}
+              onSelectListingForDeal={handleSelectListingForDeal}
+              onOpenNewEnquiryModal={() => setNewEnquiryModalOpen(true)}
             />
           )}
 

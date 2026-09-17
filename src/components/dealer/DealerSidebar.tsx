@@ -15,7 +15,6 @@ import {
   HelpCircle,
   BookOpen,
   X,
-  MapPin,
   Calculator,
   Mic,
   MessageSquareWarning,
@@ -67,7 +66,7 @@ export const DealerSidebar: React.FC<DealerSidebarProps> = ({
   currentUser,
   isOpenMobile = false,
   onCloseMobile,
-  onSelectPortalMode
+  onSelectPortalMode: _onSelectPortalMode
 }) => {
   const navSections = [
     {
@@ -87,7 +86,6 @@ export const DealerSidebar: React.FC<DealerSidebarProps> = ({
       title: 'FARMER & AGRI-TECH',
       items: [
         { id: 'farmer_sell' as DealerActiveTab, label: 'Farmer Sell Portal', icon: Sprout },
-        { id: 'ap_map' as DealerActiveTab, label: 'Interactive AP Map', icon: MapPin },
         { id: 'profit_calc' as DealerActiveTab, label: 'Profit & Yield Calculator', icon: Calculator },
         { id: 'ai_assistant' as DealerActiveTab, label: 'AI Voice & Disease Vision', icon: Mic }
       ]
@@ -234,90 +232,13 @@ export const DealerSidebar: React.FC<DealerSidebarProps> = ({
           ))}
         </div>
 
-        {/* Bottom Switcher Card: 4 Portals */}
-        <div className="p-3 border-t border-[#0d3b2a]/70 space-y-2">
-          <div className="px-1 text-[10px] font-bold tracking-wider text-emerald-400/60 uppercase">
-            Quick Switch Portal
+        {/* Clean Footer Bar */}
+        <div className="p-3 border-t border-[#0d3b2a]/70 flex items-center justify-between text-[11px] text-emerald-400/80">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-semibold text-emerald-300">AP-RythuSetu</span>
           </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => {
-                if (onSelectPortalMode) {
-                  onSelectPortalMode('farmer');
-                } else {
-                  onSelectTab('farmer_sell');
-                }
-                if (onCloseMobile) onCloseMobile();
-              }}
-              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
-                activeTab === 'farmer_sell' || activeTab === 'profit_calc'
-                  ? 'bg-emerald-800 border-emerald-400 text-white font-black shadow-inner'
-                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
-              }`}
-            >
-              <span className="text-sm">🌾</span>
-              <span className="text-[11px] font-bold truncate">Farmer</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (onSelectPortalMode) {
-                  onSelectPortalMode('dealer');
-                } else {
-                  onSelectTab('dashboard');
-                }
-                if (onCloseMobile) onCloseMobile();
-              }}
-              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
-                activeTab === 'dashboard' || activeTab === 'buy_produce' || activeTab === 'deal_and_ask' || activeTab === 'price_alerts'
-                  ? 'bg-teal-800 border-teal-400 text-white font-black shadow-inner'
-                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
-              }`}
-            >
-              <span className="text-sm">🛒</span>
-              <span className="text-[11px] font-bold truncate">Dealer</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => {
-                if (onSelectPortalMode) {
-                  onSelectPortalMode('transport');
-                } else {
-                  onSelectTab('transport_vehicles');
-                }
-                if (onCloseMobile) onCloseMobile();
-              }}
-              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
-                activeTab === 'transport_vehicles' || activeTab === 'warehouse_storage' || activeTab === 'labour_hub'
-                  ? 'bg-blue-800 border-blue-400 text-white font-black shadow-inner'
-                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
-              }`}
-            >
-              <span className="text-sm">🚚</span>
-              <span className="text-[11px] font-bold truncate">Transport</span>
-            </button>
-
-            <button
-              onClick={() => {
-                if (onSelectPortalMode) {
-                  onSelectPortalMode('admin');
-                } else {
-                  onSelectTab('grievances');
-                }
-                if (onCloseMobile) onCloseMobile();
-              }}
-              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
-                activeTab === 'grievances' || activeTab === 'stock_inventory'
-                  ? 'bg-amber-800 border-amber-400 text-white font-black shadow-inner'
-                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
-              }`}
-            >
-              <span className="text-sm">🏛️</span>
-              <span className="text-[11px] font-bold truncate">Admin</span>
-            </button>
-          </div>
+          <span className="text-[10px] bg-[#051c14] border border-emerald-900 px-2 py-0.5 rounded text-emerald-400 font-mono font-bold">26 Mandis Online</span>
         </div>
       </aside>
     </>
