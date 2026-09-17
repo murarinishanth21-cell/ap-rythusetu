@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Search, Mic } from 'lucide-react';
+import { RefreshCw, Search, Mic, Plus, X, Send, ShieldAlert } from 'lucide-react';
 import { api } from '../../../api';
 import { DISTRICT_LIST } from '../../../districtData';
+import { notificationService } from '../../../services/notificationService';
 
 interface GrievanceRedressalViewProps {
   district: string;
@@ -15,6 +16,15 @@ export const GrievanceRedressalView: React.FC<GrievanceRedressalViewProps> = ({
   const [filterStatus, setFilterStatus] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDistrict, setFilterDistrict] = useState('All');
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // New Grievance Modal Form State
+  const [formName, setFormName] = useState('V. Ramana Rao');
+  const [formMobile, setFormMobile] = useState('9848022331');
+  const [formDistrict, setFormDistrict] = useState(district === 'Statewide' ? 'Guntur' : district);
+  const [formCategory, setFormCategory] = useState('Mandi Payment Delay');
+  const [formDesc, setFormDesc] = useState('');
+  const [formSubmitting, setFormSubmitting] = useState(false);
 
   // Load real-time grievances from API
   const loadGrievances = async () => {
@@ -74,9 +84,67 @@ export const GrievanceRedressalView: React.FC<GrievanceRedressalViewProps> = ({
 
   useEffect(() => {
     loadGrievances();
+    const handleSyncEvent = () => loadGrievances();
+    window.addEventListener('ap-rythusetu-grievance-change', handleSyncEvent);
     const interval = setInterval(loadGrievances, 3500);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('ap-rythusetu-grievance-change', handleSyncEvent);
+      clearInterval(interval);
+    };
   }, [district, filterStatus, filterDistrict]);
+
+  const handleCreateManualGrievance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formDesc.trim()) return;
+
+    try {
+      setFormSubmitting(true);
+      const res = await api.createGrievance({
+        user_id: `AP-FRM-${formMobile.slice(-4) || '9999'}`,
+        user_name: formName.trim(),
+        user_role: 'farmer',
+        district: formDistrict,
+        category: formCategory,
+        description: formDesc.trim(),
+        translated_text: formDesc.trim()
+      });
+
+      const tId = res?.id || res?.ticket_id || Math.floor(100 + Math.random() * 900);
+
+      // Add to Admin Notifications
+      notificationService.addNotification({
+        roleTarget: 'admin',
+        title: `🚨 New Grievance #${tId} (${formCategory})`,
+        desc: `${formName} in ${formDistrict}: "${formDesc.length > 75 ? formDesc.slice(0, 75) + '...' : formDesc}"`,
+        category: formCategory,
+        linkTab: 'grievances',
+        district: formDistrict,
+        unread: true
+      });
+
+      // Add to Farmer Notifications
+      notificationService.addNotification({
+        roleTarget: 'farmer',
+        title: `📋 Grievance Ticket #${tId} Lodged`,
+        desc: `Your ticket regarding ${formCategory} has been recorded in the AP Government Mandi Ledger.`,
+        category: 'Grievance',
+        linkTab: 'grievances',
+        district: formDistrict,
+        unread: true
+      });
+
+      // Trigger event and reload
+      window.dispatchEvent(new CustomEvent('ap-rythusetu-grievance-change'));
+      setModalOpen(false);
+      setFormDesc('');
+      await loadGrievances();
+      alert(`✅ Official Grievance Ticket #${tId} lodged successfully! Reflected in live admin ledger.`);
+    } catch {
+      alert('Failed to submit grievance.');
+    } finally {
+      setFormSubmitting(false);
+    }
+  };
 
   const filteredGrievances = grievances.filter((g) => {
     if (filterStatus !== 'All' && g.status !== filterStatus) return false;
@@ -109,6 +177,17 @@ export const GrievanceRedressalView: React.FC<GrievanceRedressalViewProps> = ({
       setGrievances((prev) =>
         prev.map((g) => (g.id === id ? { ...g, status: newStatus, remark } : g))
       );
+
+      // Notify Farmer of status update
+      notificationService.addNotification({
+        roleTarget: 'farmer',
+        title: `🏛️ Grievance #${id} Updated: ${newStatus}`,
+        desc: `AP Agriculture Directorate Action: "${remark}".`,
+        category: 'Official Action',
+        linkTab: 'grievances',
+        unread: true
+      });
+
       alert(`✅ Grievance #${id} status updated to ${newStatus}.`);
     } catch {
       setGrievances((prev) =>
@@ -142,6 +221,13 @@ export const GrievanceRedressalView: React.FC<GrievanceRedressalViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#062419] hover:bg-[#0a3a28] text-emerald-300 hover:text-white rounded-xl text-xs font-black transition-all shadow-xs"
+          >
+            <Plus size={14} />
+            <span>Lodge Grievance Ticket (ఫిర్యాదు దాఖలు)</span>
+          </button>
           <button
             onClick={loadGrievances}
             disabled={loading}
@@ -320,6 +406,123 @@ export const GrievanceRedressalView: React.FC<GrievanceRedressalViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Manual Grievance Submission Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-rose-50 text-rose-700 rounded-xl">
+                  <ShieldAlert size={18} />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-sm">
+                    Lodge Official Grievance Ticket
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    ఆంధ్రప్రదేశ్ వ్యవసాయ మార్కెటింగ్ శాఖ • 24hr Official SLA
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateManualGrievance} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Complainant / Farmer Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:bg-white focus:border-emerald-600 outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">10-Digit Mobile Number</label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    value={formMobile}
+                    onChange={(e) => setFormMobile(e.target.value.replace(/\D/g, ''))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:bg-white focus:border-emerald-600 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">AP District (జిల్లా)</label>
+                  <select
+                    value={formDistrict}
+                    onChange={(e) => setFormDistrict(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:bg-white focus:border-emerald-600 outline-hidden"
+                  >
+                    {DISTRICT_LIST.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Grievance Category</label>
+                  <select
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:bg-white focus:border-emerald-600 outline-hidden"
+                  >
+                    <option value="Mandi Payment Delay">Mandi Payment Delay (చెల్లింపు ఆలస్యం)</option>
+                    <option value="Weighment Discrepancy">Weighment Discrepancy (తూకం తేడా)</option>
+                    <option value="Crop Damage Compensation">Crop Damage Compensation (పంట నష్టం)</option>
+                    <option value="Transport Logistics Issue">Transport Logistics Issue (రవాణా సమస్య)</option>
+                    <option value="Cold Storage Delay">Cold Storage Delay (శీతల గోదాము సమస్య)</option>
+                    <option value="Other Mandi Grievance">Other Mandi Grievance (ఇతర సమస్య)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Description of Issue / Mandi Details (వివరణ)
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={formDesc}
+                  onChange={(e) => setFormDesc(e.target.value)}
+                  placeholder="State the lot ID, amount delayed, mandi location, or weighbridge receipt details..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 text-xs focus:bg-white focus:border-emerald-600 outline-hidden resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={formSubmitting}
+                  className="px-5 py-2.5 bg-[#062419] hover:bg-[#0a3a28] text-emerald-300 hover:text-white rounded-xl font-bold flex items-center gap-2 shadow-md transition-all disabled:opacity-50"
+                >
+                  <Send size={13} />
+                  <span>{formSubmitting ? 'Recording Ticket...' : 'Submit Grievance Ticket'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

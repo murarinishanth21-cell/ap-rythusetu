@@ -19,6 +19,7 @@ import {
 import { DISTRICT_LIST } from '../../districtData';
 import type { DealerUser, FarmerListing } from './types';
 import type { DealerActiveTab } from './DealerSidebar';
+import { notificationService, type AppNotification } from '../../services/notificationService';
 
 export interface UserProfile {
   name: string;
@@ -171,106 +172,24 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Profile Specific Realtime Notifications
-  const DEALER_NOTIFICATIONS = [
-    {
-      id: 'dn-1',
-      title: '🌶️ Market Rate Spike',
-      desc: 'Guntur Sannam Chilli rose +4.8% to ₹18,500/Q in Guntur Mirchi Yard.',
-      time: '6 min ago',
-      unread: true,
-      category: 'Market Update'
-    },
-    {
-      id: 'dn-2',
-      title: '🧑‍🌾 New Harvest Lot Listed',
-      desc: 'Farmer V. Ramana Rao published 150 Q Teja Supreme Chilli in Tenali.',
-      time: '18 min ago',
-      unread: true,
-      category: 'Farmer Listing'
-    },
-    {
-      id: 'dn-3',
-      title: '🤝 Bargain Accepted',
-      desc: 'Farmer Venkata Ramana accepted your counter-offer of ₹18,200/Q for lot #lst-101.',
-      time: '42 min ago',
-      unread: false,
-      category: 'Deal Acceptance'
-    },
-    {
-      id: 'dn-4',
-      title: '🚚 Transport Fleet Dispatched',
-      desc: '10-Ton Freight Truck AP-07-TJ-4492 en route from Guntur Mandi to Tenali farm-gate.',
-      time: '1 hour ago',
-      unread: false,
-      category: 'Logistics'
-    }
-  ];
-
-  const FARMER_NOTIFICATIONS = [
-    {
-      id: 'fn-1',
-      title: '💼 Dealer Bargain Proposal',
-      desc: 'Sri Balaji Agro Commodities submitted an offer of ₹18,000/Q for your 150 Q Chilli lot.',
-      time: '4 min ago',
-      unread: true,
-      category: 'Bargain Offer'
-    },
-    {
-      id: 'fn-2',
-      title: '🏛️ AP Govt MSP Price Alert',
-      desc: 'Agriculture Dept declared minimum floor price safety of ₹16,500/Q for Red Chilli.',
-      time: '25 min ago',
-      unread: true,
-      category: 'MSP Declaration'
-    },
-    {
-      id: 'fn-3',
-      title: '🛡️ RBK Quality Certified',
-      desc: 'Rythu Bharosa Kendra officer certified your Turmeric harvest as Grade A1.',
-      time: '1 hour ago',
-      unread: false,
-      category: 'RBK Inspection'
-    },
-    {
-      id: 'fn-4',
-      title: '🚜 Farm-Gate Transport Allocated',
-      desc: 'Tractor Trolley AP-16-TX-9921 scheduled for loading today at 02:00 PM. OTP: 492011.',
-      time: '2 hours ago',
-      unread: false,
-      category: 'Transport Booking'
-    },
-    {
-      id: 'fn-5',
-      title: '💰 Escrow Payment Credited',
-      desc: '₹2,73,000 direct RTGS payment credited to your SBI Account (AP-Rythu Escrow).',
-      time: '4 hours ago',
-      unread: false,
-      category: 'Payment Settlement'
-    }
-  ];
-
-  const ADMIN_NOTIFICATIONS = [
-    {
-      id: 'an-1',
-      title: '📦 Buffer Stock Rebalance Alert',
-      desc: 'Ananthapur and Sri Sathya Sai dryland granaries require groundnut replenishment.',
-      time: '10 min ago',
-      unread: true,
-      category: 'State Buffer'
-    },
-    {
-      id: 'an-2',
-      title: '❄️ Cold Storage Capacity Warning',
-      desc: 'Machilipatnam and Kakinada port silos operating above 82% capacity.',
-      time: '35 min ago',
-      unread: true,
-      category: 'Warehouse Logistics'
-    }
-  ];
-
+  // Profile Specific Realtime Notifications via notificationService
   const activeRole = currentUser?.role || 'dealer';
-  const notifications = activeRole === 'farmer' ? FARMER_NOTIFICATIONS : activeRole === 'admin' ? ADMIN_NOTIFICATIONS : DEALER_NOTIFICATIONS;
+  const [notifications, setNotifications] = useState<AppNotification[]>(() =>
+    notificationService.getNotifications(activeRole)
+  );
+
+  useEffect(() => {
+    const refresh = () => {
+      setNotifications(notificationService.getNotifications(activeRole));
+    };
+    refresh();
+    if (activeRole === 'admin') {
+      notificationService.syncGrievancesFromApi().then(refresh);
+    }
+    const unsub = notificationService.subscribe(refresh);
+    return unsub;
+  }, [activeRole]);
+
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
@@ -520,42 +439,104 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
                 className="fixed inset-0 z-30"
                 onClick={() => setNotifDropdownOpen(false)}
               />
-              <div className="absolute right-0 mt-1.5 w-84 bg-white rounded-2xl shadow-xl border border-slate-100 p-3.5 z-40">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="absolute right-0 mt-1.5 w-88 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 p-3.5 z-40 animate-in fade-in zoom-in-95">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-black text-slate-900">
                       {activeRole === 'farmer'
-                        ? '🌾 Farmer Notifications'
+                        ? '🌾 Farmer Alerts & Offers'
                         : activeRole === 'admin'
-                        ? '🏛️ State Admin Alerts'
-                        : '🛒 Dealer Notifications'}
+                        ? '🏛️ State Command Alerts'
+                        : activeRole === 'transport'
+                        ? '🚚 Freight & Logistics Alerts'
+                        : activeRole === 'worker'
+                        ? '👷 Shramik Hub Notifications'
+                        : '🛒 Dealer Alerts & Mandi Rates'}
                     </span>
                   </div>
-                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    {unreadCount} New
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={() => notificationService.markAllAsRead(activeRole)}
+                        className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline px-1.5 py-0.5 rounded"
+                        title="Mark all as read"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      {unreadCount} Unread
+                    </span>
+                  </div>
                 </div>
-                <div className="divide-y divide-slate-100 mt-1 max-h-80 overflow-y-auto custom-scrollbar">
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-2.5 rounded-xl transition-colors ${
-                        n.unread ? 'bg-emerald-50/60' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-slate-900">{n.title}</p>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
-                            {n.category}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 shrink-0">{n.time}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 mt-1 leading-snug">{n.desc}</p>
+
+                <div className="divide-y divide-slate-100 mt-1 max-h-84 overflow-y-auto custom-scrollbar">
+                  {notifications.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <Bell size={24} className="mx-auto text-slate-300 mb-1" />
+                      <p className="text-xs font-bold text-slate-600">No active notifications</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">You are completely up to date!</p>
                     </div>
-                  ))}
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          notificationService.markAsRead(n.id);
+                          if (n.linkTab && onNavigateToTab) {
+                            onNavigateToTab(n.linkTab);
+                            setNotifDropdownOpen(false);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl transition-all cursor-pointer group ${
+                          n.unread
+                            ? 'bg-emerald-50/70 hover:bg-emerald-100/60 border-l-3 border-emerald-500'
+                            : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-900">
+                              {n.title}
+                            </p>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 shrink-0">
+                              {n.category}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 shrink-0 font-medium">{n.time}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-1 leading-snug line-clamp-2">
+                          {n.desc}
+                        </p>
+                        {n.linkTab && (
+                          <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-100/60">
+                            <span className="text-[10px] font-bold text-emerald-700 group-hover:underline flex items-center gap-1">
+                              <span>Open {n.linkTab.replace(/_/g, ' ')}</span>
+                              <ArrowRight size={10} />
+                            </span>
+                            {n.unread && (
+                              <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded">
+                                New
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
+
+                {notifications.length > 0 && (
+                  <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                    <span className="text-slate-400">Total: {notifications.length} alerts</span>
+                    <button
+                      onClick={() => notificationService.clearAll(activeRole)}
+                      className="font-bold text-slate-500 hover:text-rose-600 transition-colors"
+                    >
+                      Clear history
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}

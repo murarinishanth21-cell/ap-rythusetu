@@ -11,6 +11,7 @@ import {
   FileText
 } from 'lucide-react';
 import { api } from '../../../api';
+import { notificationService } from '../../../services/notificationService';
 
 interface AIAssistantViewProps {
   district: string;
@@ -146,6 +147,30 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           description: `Voice Query: ${q}`,
           translated_text: reply
         });
+
+        // Push real-time alert to Admin Bell
+        notificationService.addNotification({
+          roleTarget: 'admin',
+          title: `🚨 Farmer Voice Complaint (#${tId})`,
+          desc: `Voice report in ${district} (${cat}): "${q.length > 75 ? q.slice(0, 75) + '...' : q}"`,
+          category: 'Mandi Grievance',
+          linkTab: 'grievances',
+          district: district || 'Guntur',
+          unread: true
+        });
+
+        // Inform farmer
+        notificationService.addNotification({
+          roleTarget: 'farmer',
+          title: `📋 Complaint Ticket #${tId} Registered`,
+          desc: `Your grievance regarding "${cat}" in ${district} is registered and pending officer review.`,
+          category: 'Grievance Ticket',
+          linkTab: 'grievances',
+          district: district || 'Guntur',
+          unread: true
+        });
+
+        window.dispatchEvent(new CustomEvent('ap-rythusetu-grievance-change'));
       }
     } catch {
       const fallback =
@@ -176,6 +201,29 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       const tId = res?.id || res?.ticket_id || `AP-GRV-${Math.floor(1000 + Math.random() * 9000)}`;
       setLoggedTicketId(String(tId));
       setTicketCategory(cat);
+
+      // Push real-time alert to Admin Bell
+      notificationService.addNotification({
+        roleTarget: 'admin',
+        title: `🚨 Official Grievance Ticket #${tId}`,
+        desc: `Farmer in ${district} submitted: "${textToLog.length > 75 ? textToLog.slice(0, 75) + '...' : textToLog}"`,
+        category: 'Mandi Grievance',
+        linkTab: 'grievances',
+        district: district || 'Guntur',
+        unread: true
+      });
+
+      notificationService.addNotification({
+        roleTarget: 'farmer',
+        title: `📋 Grievance Registered (#${tId})`,
+        desc: `Your complaint has been forwarded to AP Mandi Command Center.`,
+        category: 'Grievance Ticket',
+        linkTab: 'grievances',
+        district: district || 'Guntur',
+        unread: true
+      });
+
+      window.dispatchEvent(new CustomEvent('ap-rythusetu-grievance-change'));
       alert(`✅ Official Grievance Ticket #${tId} has been logged directly with the AP Government Command Center.`);
     } catch {
       alert('Failed to register grievance.');
@@ -198,6 +246,19 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       const tId = res?.id || res?.ticket_id || `AP-GRV-${Math.floor(1000 + Math.random() * 9000)}`;
       setLoggedTicketId(String(tId));
       setTicketCategory('Crop Damage Compensation');
+
+      // Alert Admin
+      notificationService.addNotification({
+        roleTarget: 'admin',
+        title: `🚨 Crop Damage Assessment Claim (#${tId})`,
+        desc: `Pest/Disease detected in ${district}: ${detailedDiagnosis.disease_detected || 'Crop Disease'}. Agronomy inspection requested.`,
+        category: 'Crop Damage',
+        linkTab: 'grievances',
+        district: district || 'Guntur',
+        unread: true
+      });
+
+      window.dispatchEvent(new CustomEvent('ap-rythusetu-grievance-change'));
       alert(`🚨 Crop damage inspection request logged! Ticket #${tId} submitted to District Agricultural Officer.`);
     } catch {
       alert('Failed to register damage request.');

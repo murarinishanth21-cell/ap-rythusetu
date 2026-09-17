@@ -11,10 +11,26 @@ import {
   TrendingUp,
   BarChart3,
   X,
-  Lightbulb
+  Lightbulb,
+  Zap,
+  Trash2
 } from 'lucide-react';
-import type { PriceAlertItem } from '../types';
+import type { PriceAlertItem, RecentAlertLog } from '../types';
 import { INITIAL_PRICE_ALERTS, INITIAL_RECENT_ALERTS } from '../dealerData';
+import { notificationService } from '../../../services/notificationService';
+
+const ALERTS_STORAGE_KEY = 'ap_rythusetu_price_alerts_v3';
+
+function loadStoredAlerts(): PriceAlertItem[] {
+  try {
+    const raw = localStorage.getItem(ALERTS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return INITIAL_PRICE_ALERTS;
+}
 
 interface PriceAlertsViewProps {
   district: string;
@@ -25,9 +41,23 @@ export const PriceAlertsView: React.FC<PriceAlertsViewProps> = ({
   district,
   onNavigateToMarketTrends
 }) => {
-  const [alerts, setAlerts] = useState<PriceAlertItem[]>(INITIAL_PRICE_ALERTS);
-  const [recentAlerts] = useState(INITIAL_RECENT_ALERTS);
+  const [alerts, setAlerts] = useState<PriceAlertItem[]>(loadStoredAlerts);
+  const [recentAlerts, setRecentAlerts] = useState(INITIAL_RECENT_ALERTS);
   const [modalOpen, setModalOpen] = useState(false);
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  const saveAlerts = (newAlerts: PriceAlertItem[]) => {
+    try {
+      localStorage.setItem(ALERTS_STORAGE_KEY, JSON.stringify(newAlerts));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const showToast = (msg: string) => {
+    setFeedbackToast(msg);
+    setTimeout(() => setFeedbackToast(null), 4000);
+  };
 
   // Form State
   const [newCrop, setNewCrop] = useState('Guntur Chilli');
@@ -53,9 +83,104 @@ export const PriceAlertsView: React.FC<PriceAlertsViewProps> = ({
       actionText: 'View >'
     };
 
-    setAlerts([newAlert, ...alerts]);
+    const next = [newAlert, ...alerts];
+    setAlerts(next);
+    saveAlerts(next);
     setModalOpen(false);
-    alert(`🔔 Price alert ${newId} created successfully for ${newCrop} (${newCondition} ₹${Number(newTargetPrice).toLocaleString()}) in ${district}!`);
+
+    // Push notification to Dealer Bell
+    notificationService.addNotification({
+      roleTarget: 'dealer',
+      title: `🔔 Price Alert Set (#${newId})`,
+      desc: `Tracking ${newCrop} (${newGrade}) when rate is ${newCondition} ₹${Number(newTargetPrice).toLocaleString()}/Q in ${district}.`,
+      category: 'Price Alert',
+      linkTab: 'price_alerts',
+      district,
+      unread: true
+    });
+
+    // Also push notification to Farmer Bell
+    notificationService.addNotification({
+      roleTarget: 'farmer',
+      title: `🔔 Mandi Benchmark Set: ${newCrop}`,
+      desc: `Dealer target ${newCondition} ₹${Number(newTargetPrice).toLocaleString()}/Q set for ${newGrade} in ${district}.`,
+      category: 'Mandi Rate',
+      linkTab: 'price_alerts',
+      district,
+      unread: true
+    });
+
+    showToast(`🔔 Price alert #${newId} created and notification sent!`);
+  };
+
+  const handleTriggerAlert = (al: PriceAlertItem) => {
+    const simulatedPrice = al.condition === 'Price Above' ? al.targetPrice + 450 : al.targetPrice - 450;
+    const updated = alerts.map((item) =>
+      item.id === al.id
+        ? {
+            ...item,
+            status: 'Triggered' as const,
+            currentPrice: simulatedPrice,
+            lastUpdated: 'Just now'
+          }
+        : item
+    );
+    setAlerts(updated);
+    saveAlerts(updated);
+
+    // Add to recent triggered list
+    const newRecent: RecentAlertLog = {
+      id: `RC-${Date.now()}`,
+      cropName: al.cropName,
+      grade: al.grade,
+      alertType: al.condition,
+      price: simulatedPrice,
+      changePct: al.condition === 'Price Above' ? 4.8 : -3.2,
+      time: 'Just now',
+      status: 'Triggered'
+    };
+    setRecentAlerts([newRecent, ...recentAlerts.slice(0, 4)]);
+
+    // Push immediate high-priority alert to Dealer
+    notificationService.addNotification({
+      roleTarget: 'dealer',
+      title: `🚨 Rate Alert Triggered! (${al.cropName})`,
+      desc: `Market price for ${al.cropName} hit ₹${simulatedPrice.toLocaleString()}/Q in ${district}! Target was ${al.condition} ₹${al.targetPrice.toLocaleString()}/Q.`,
+      category: 'Triggered Alert',
+      linkTab: 'price_alerts',
+      district,
+      unread: true
+    });
+
+    // Push immediate high-priority alert to Farmer
+    notificationService.addNotification({
+      roleTarget: 'farmer',
+      title: `📈 Target Price Hit: ${al.cropName}`,
+      desc: `Mandi rate for ${al.cropName} reached ₹${simulatedPrice.toLocaleString()}/Q in ${district} yard. Favorable rate to sell!`,
+      category: 'Market Opportunity',
+      linkTab: 'farmer_sell',
+      district,
+      unread: true
+    });
+
+    showToast(`⚡ Price alert #${al.id} triggered! Live notification delivered to Bell icon.`);
+  };
+
+  const handleToggleStatus = (al: PriceAlertItem) => {
+    const nextStatus: 'Active' | 'Inactive' = al.status === 'Active' ? 'Inactive' : 'Active';
+    const updated: PriceAlertItem[] = alerts.map((item) =>
+      item.id === al.id ? { ...item, status: nextStatus, lastUpdated: 'Just now' } : item
+    );
+    setAlerts(updated);
+    saveAlerts(updated);
+    showToast(`Alert #${al.id} is now ${nextStatus}.`);
+  };
+
+  const handleDeleteAlert = (id: string) => {
+    const updated = alerts.filter((item) => item.id !== id);
+    setAlerts(updated);
+    saveAlerts(updated);
+    showToast(`Alert #${id} deleted.`);
   };
 
   const getCropEmoji = (name: string) => {
@@ -102,6 +227,22 @@ export const PriceAlertsView: React.FC<PriceAlertsViewProps> = ({
         </div>
       </div>
 
+      {/* Feedback Toast Notification */}
+      {feedbackToast && (
+        <div className="p-3 bg-[#062419] text-emerald-300 rounded-2xl border border-emerald-600 flex items-center justify-between shadow-lg animate-in fade-in zoom-in-95 text-xs font-bold">
+          <div className="flex items-center gap-2">
+            <Zap size={16} className="text-amber-400 shrink-0" />
+            <span>{feedbackToast}</span>
+          </div>
+          <button
+            onClick={() => setFeedbackToast(null)}
+            className="text-slate-400 hover:text-white p-1"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* 4 Stat Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
@@ -110,53 +251,50 @@ export const PriceAlertsView: React.FC<PriceAlertsViewProps> = ({
           </div>
           <div>
             <p className="text-[11px] font-medium text-slate-500">Total Alerts</p>
-            <h3 className="text-lg font-black text-slate-900 mt-0.5">28</h3>
+            <h3 className="text-lg font-black text-slate-900 mt-0.5">{alerts.length}</h3>
             <p className="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5 mt-0.5">
-              <span>↑ +12% from last week</span>
+              <span>↑ Monitored in {district}</span>
             </p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-[#062419] text-white flex items-center justify-center shrink-0">
-            <CheckCircle2 size={20} className="text-emerald-400" />
+          <div className="w-12 h-12 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0">
+            <CheckCircle2 size={20} className="text-emerald-300" />
           </div>
           <div>
             <p className="text-[11px] font-medium text-slate-500">Active Alerts</p>
-            <h3 className="text-lg font-black text-slate-900 mt-0.5">20</h3>
+            <h3 className="text-lg font-black text-slate-900 mt-0.5">{alerts.filter(a => a.status === 'Active').length}</h3>
             <p className="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5 mt-0.5">
-              <span>↑ +11% from last week</span>
+              <span>● Live Listening</span>
             </p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-[#062419] text-white flex items-center justify-center shrink-0">
-            <Clock size={20} className="text-emerald-400" />
+          <div className="w-12 h-12 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0">
+            <Clock size={20} className="text-amber-100" />
           </div>
           <div>
             <p className="text-[11px] font-medium text-slate-500">Triggered Alerts</p>
-            <h3 className="text-lg font-black text-slate-900 mt-0.5">6</h3>
-            <p className="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5 mt-0.5">
-              <span>↑ +50% from last week</span>
+            <h3 className="text-lg font-black text-slate-900 mt-0.5">{alerts.filter(a => a.status === 'Triggered').length}</h3>
+            <p className="text-[11px] font-bold text-amber-600 flex items-center gap-0.5 mt-0.5">
+              <span>⚡ Notifications Sent</span>
             </p>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-[#062419] text-white flex items-center justify-center shrink-0">
-            <Slash size={20} className="text-emerald-400" />
+          <div className="w-12 h-12 rounded-xl bg-slate-700 text-white flex items-center justify-center shrink-0">
+            <Slash size={20} className="text-slate-300" />
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-medium text-slate-500">Inactive Alerts</p>
-              <button className="text-[10px] font-bold text-emerald-700 hover:underline">
-                View All
-              </button>
             </div>
-            <h3 className="text-lg font-black text-slate-900 mt-0.5">2</h3>
-            <p className="text-[11px] font-bold text-rose-600 flex items-center gap-0.5 mt-0.5">
-              <span>↓ -33% from last week</span>
+            <h3 className="text-lg font-black text-slate-900 mt-0.5">{alerts.filter(a => a.status === 'Inactive').length}</h3>
+            <p className="text-[11px] font-bold text-slate-400 flex items-center gap-0.5 mt-0.5">
+              <span>Paused Alerts</span>
             </p>
           </div>
         </div>
@@ -177,9 +315,9 @@ export const PriceAlertsView: React.FC<PriceAlertsViewProps> = ({
                   </p>
                 </div>
               </div>
-              <button className="text-xs font-bold text-emerald-700 hover:underline">
-                View All &gt;
-              </button>
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                {alerts.length} Rules Active
+              </span>
             </div>
 
             <div className="overflow-x-auto">
@@ -190,11 +328,11 @@ export const PriceAlertsView: React.FC<PriceAlertsViewProps> = ({
                     <th className="py-2.5 px-4">Crop</th>
                     <th className="py-2.5 px-4">Grade</th>
                     <th className="py-2.5 px-4">Condition</th>
-                    <th className="py-2.5 px-4">Target Price (₹/Q)</th>
-                    <th className="py-2.5 px-4">Current Price (₹/Q)</th>
+                    <th className="py-2.5 px-4">Target Price</th>
+                    <th className="py-2.5 px-4">Current Price</th>
                     <th className="py-2.5 px-4">Status</th>
                     <th className="py-2.5 px-4">Last Updated</th>
-                    <th className="py-2.5 px-4 text-center">Action</th>
+                    <th className="py-2.5 px-4 text-center">Action &amp; Test</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -226,18 +364,39 @@ export const PriceAlertsView: React.FC<PriceAlertsViewProps> = ({
                         ₹{al.currentPrice.toLocaleString()}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold">
+                        <button
+                          onClick={() => handleToggleStatus(al)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-pointer ${
+                            al.status === 'Triggered'
+                              ? 'bg-amber-50 text-amber-800 border-amber-300'
+                              : al.status === 'Active'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                          }`}
+                          title="Click to toggle Active/Inactive"
+                        >
                           {al.status}
-                        </span>
+                        </button>
                       </td>
                       <td className="py-3 px-4 text-[11px] text-slate-500">{al.lastUpdated}</td>
                       <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => alert(`Showing alert details for ${al.id}`)}
-                          className="text-emerald-700 hover:text-emerald-900 font-bold text-[11px]"
-                        >
-                          View &gt;
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleTriggerAlert(al)}
+                            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors"
+                            title="Simulate market price hitting target and test notification"
+                          >
+                            <Zap size={11} className="text-amber-600" />
+                            <span>Trigger</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAlert(al.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                            title="Delete alert rule"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
