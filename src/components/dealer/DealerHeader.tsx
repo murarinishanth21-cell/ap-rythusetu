@@ -483,8 +483,20 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
                         key={n.id}
                         onClick={() => {
                           notificationService.markAsRead(n.id);
-                          if (n.linkTab && onNavigateToTab) {
-                            onNavigateToTab(n.linkTab);
+                          let targetTab = n.linkTab;
+                          // STRICT PORTAL ISOLATION:
+                          // If current role is farmer, never jump into dealer procurement views!
+                          if (activeRole === 'farmer' && (targetTab === 'deal_and_ask' || targetTab === 'buy_produce' || !targetTab)) {
+                            targetTab = 'farmer_sell';
+                          }
+                          if (n.metadata?.openBargain || n.metadata?.enquiryId) {
+                            try {
+                              localStorage.setItem('ap_farmer_highlight_deal', JSON.stringify(n.metadata));
+                            } catch {}
+                            window.dispatchEvent(new CustomEvent('ap-farmer-open-deal', { detail: n.metadata }));
+                          }
+                          if (targetTab && onNavigateToTab) {
+                            onNavigateToTab(targetTab);
                             setNotifDropdownOpen(false);
                           }
                         }}
@@ -511,7 +523,11 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
                         {n.linkTab && (
                           <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-100/60">
                             <span className="text-[10px] font-bold text-emerald-700 group-hover:underline flex items-center gap-1">
-                              <span>Open {n.linkTab.replace(/_/g, ' ')}</span>
+                              <span>
+                                {activeRole === 'farmer' && (n.linkTab === 'deal_and_ask' || n.linkTab === 'farmer_sell')
+                                  ? '🤝 Review & Accept Offer'
+                                  : `Open ${(activeRole === 'farmer' && n.linkTab === 'deal_and_ask' ? 'farmer_sell' : n.linkTab).replace(/_/g, ' ')}`}
+                              </span>
                               <ArrowRight size={10} />
                             </span>
                             {n.unread && (

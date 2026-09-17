@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sprout,
   PlusCircle,
@@ -16,10 +16,13 @@ import {
   Truck,
   MapPin,
   Clock,
-  KeyRound
+  KeyRound,
+  Handshake,
+  Building2
 } from 'lucide-react';
 import { api } from '../../../api';
 import { DISTRICT_DATA, normalizeDistrictName, getCropImage } from '../../../districtData';
+import { notificationService } from '../../../services/notificationService';
 
 interface FarmerSellViewProps {
   district: string;
@@ -42,6 +45,8 @@ export const FarmerSellView: React.FC<FarmerSellViewProps> = ({
   const [counterModalOpen, setCounterModalOpen] = useState(false);
   const [counterEnquiry, setCounterEnquiry] = useState<any | null>(null);
   const [counterPrice, setCounterPrice] = useState('');
+  const [dealReviewModalOpen, setDealReviewModalOpen] = useState(false);
+  const [selectedDealForReview, setSelectedDealForReview] = useState<any | null>(null);
 
   // Transport Booking Form States
   const [selectedVehicleType, setSelectedVehicleType] = useState<'tractor' | 'mini_truck' | 'heavy_truck'>('mini_truck');
@@ -216,6 +221,41 @@ export const FarmerSellView: React.FC<FarmerSellViewProps> = ({
     }
   ]);
 
+  // Listen for notification navigation targeting a specific deal / enquiry
+  useEffect(() => {
+    const handleCheckDeal = () => {
+      try {
+        const stored = localStorage.getItem('ap_farmer_highlight_deal');
+        if (stored) {
+          const data = JSON.parse(stored);
+          localStorage.removeItem('ap_farmer_highlight_deal');
+          const targetId = String(data?.enquiryId || '101');
+          const match = enquiries.find((e) => String(e.id) === targetId) || enquiries[0];
+          if (match) {
+            setSelectedDealForReview(match);
+            setDealReviewModalOpen(true);
+            setActiveFarmerTab('listings');
+          }
+        }
+      } catch {}
+    };
+
+    handleCheckDeal();
+
+    const onOpenDeal = (e: any) => {
+      const targetId = String(e.detail?.enquiryId || '101');
+      const match = enquiries.find((enq) => String(enq.id) === targetId) || enquiries[0];
+      if (match) {
+        setSelectedDealForReview(match);
+        setDealReviewModalOpen(true);
+        setActiveFarmerTab('listings');
+      }
+    };
+
+    window.addEventListener('ap-farmer-open-deal', onOpenDeal as any);
+    return () => window.removeEventListener('ap-farmer-open-deal', onOpenDeal as any);
+  }, [enquiries]);
+
   const districtDetail = DISTRICT_DATA[normalizeDistrictName(district)] || DISTRICT_DATA['Guntur'];
 
   // Quick preset crops
@@ -293,17 +333,38 @@ export const FarmerSellView: React.FC<FarmerSellViewProps> = ({
   const handleEnquiryAction = async (enqId: string, status: 'accepted' | 'declined') => {
     try {
       await api.updateEnquiryStatus(Number(enqId), status);
+      const enq = enquiries.find((item) => String(item.id) === String(enqId));
       setEnquiries((prev) =>
-        prev.map((item) => (item.id === enqId ? { ...item, status } : item))
+        prev.map((item) => (String(item.id) === String(enqId) ? { ...item, status } : item))
       );
+      if (selectedDealForReview && String(selectedDealForReview.id) === String(enqId)) {
+        setSelectedDealForReview((prev: any) => (prev ? { ...prev, status } : null));
+      }
+
       if (status === 'accepted') {
-        alert('🎉 Bargain Accepted! The dealer has received your confirmation. An AP Escrow contract has been initialized.');
+        notificationService.addNotification({
+          roleTarget: 'dealer',
+          title: `🤝 Deal Confirmed by Farmer!`,
+          desc: `Farmer accepted your offer of ₹${Number(enq?.dealer_price || 18000).toLocaleString()}/Q for ${enq?.proposed_qty || enq?.crop_qty || 150} Q ${enq?.crop_name || 'produce'}. Escrow locked.`,
+          category: 'Deal Acceptance',
+          linkTab: 'deal_and_ask',
+          unread: true
+        });
+        alert('🎉 Bargain Accepted! An official AP Mandi Escrow Contract has been locked. The dealer has been notified for pickup and payment.');
       } else {
+        notificationService.addNotification({
+          roleTarget: 'dealer',
+          title: `❌ Deal Declined by Farmer`,
+          desc: `Farmer declined offer of ₹${Number(enq?.dealer_price || 18000).toLocaleString()}/Q for ${enq?.crop_name || 'produce'}.`,
+          category: 'Bargain Update',
+          linkTab: 'deal_and_ask',
+          unread: true
+        });
         alert('Decline recorded. Dealer has been notified.');
       }
     } catch {
       setEnquiries((prev) =>
-        prev.map((item) => (item.id === enqId ? { ...item, status } : item))
+        prev.map((item) => (String(item.id) === String(enqId) ? { ...item, status } : item))
       );
     }
   };
@@ -723,36 +784,50 @@ export const FarmerSellView: React.FC<FarmerSellViewProps> = ({
                         </div>
 
                         {/* Action Buttons */}
-                        {enq.status === 'pending' && (
-                          <div className="grid grid-cols-3 gap-2 pt-1">
-                            <button
-                              onClick={() => handleEnquiryAction(enq.id, 'accepted')}
-                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black shadow-xs transition-all"
-                            >
-                              <CheckCircle2 size={14} />
-                              <span>Accept Deal</span>
-                            </button>
+                        <div className="pt-1 space-y-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDealForReview(enq);
+                              setDealReviewModalOpen(true);
+                            }}
+                            className="w-full py-2 px-3 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+                          >
+                            <Handshake size={14} className="text-emerald-600" />
+                            <span>Review Full Contract &amp; Escrow Guarantee (సమీక్షించండి)</span>
+                          </button>
 
-                            <button
-                              onClick={() => {
-                                setCounterEnquiry(enq);
-                                setCounterPrice(String(enq.dealer_price + 400));
-                                setCounterModalOpen(true);
-                              }}
-                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition-all"
-                            >
-                              <span>Counter Offer</span>
-                            </button>
+                          {enq.status === 'pending' && (
+                            <div className="grid grid-cols-3 gap-2">
+                              <button
+                                onClick={() => handleEnquiryAction(enq.id, 'accepted')}
+                                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black shadow-xs transition-all"
+                              >
+                                <CheckCircle2 size={14} />
+                                <span>Accept (అంగీకరించు)</span>
+                              </button>
 
-                            <button
-                              onClick={() => handleEnquiryAction(enq.id, 'declined')}
-                              className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-white hover:bg-rose-50 border border-slate-200 text-rose-600 rounded-xl text-xs font-bold transition-all"
-                            >
-                              <XCircle size={14} />
-                              <span>Decline</span>
-                            </button>
-                          </div>
-                        )}
+                              <button
+                                onClick={() => {
+                                  setCounterEnquiry(enq);
+                                  setCounterPrice(String(enq.dealer_price + 400));
+                                  setCounterModalOpen(true);
+                                }}
+                                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition-all"
+                              >
+                                <span>Counter (ధర మార్చు)</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleEnquiryAction(enq.id, 'declined')}
+                                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-white hover:bg-rose-50 border border-slate-200 text-rose-600 rounded-xl text-xs font-bold transition-all"
+                              >
+                                <XCircle size={14} />
+                                <span>Decline (తిరస్కరించు)</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
 
                         {enq.status === 'accepted' && (
                           <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900">
@@ -1367,6 +1442,169 @@ export const FarmerSellView: React.FC<FarmerSellViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Professional Deal Proposal Review Modal (Farmer View) */}
+      {dealReviewModalOpen && selectedDealForReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-150 space-y-5">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#062419] to-emerald-800 text-white flex items-center justify-center text-xl shadow-md">
+                  🤝
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-slate-900 text-base">
+                      Mandi Deal Proposal &amp; Escrow Contract
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                      {selectedDealForReview.status}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    రైతు బేరసారాలు • Official Procurement Offer from Verified Mandi Trader
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDealReviewModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Dealer Identity & Verification Card */}
+            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Building2 size={16} className="text-emerald-700" />
+                  <span className="font-black text-xs text-slate-900">{selectedDealForReview.dealer_name}</span>
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.2 rounded-full">
+                    <BadgeCheck size={10} />
+                    <span>AP Verified Trader</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  License: <strong className="font-mono text-slate-700">{selectedDealForReview.dealer_id}</strong> • Mobile: <strong className="font-mono text-slate-700">+91 {selectedDealForReview.dealer_mobile}</strong>
+                </p>
+              </div>
+              <span className="text-2xl">🏛️</span>
+            </div>
+
+            {/* Crop & Rate Financial Breakdown */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Target Crop</span>
+                <p className="font-black text-slate-900 mt-0.5 text-xs">{selectedDealForReview.crop_name}</p>
+                <p className="text-[10px] text-slate-500">{selectedDealForReview.proposed_qty || selectedDealForReview.crop_qty || 150} Quintals</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Your Asking Rate</span>
+                <p className="font-bold text-slate-700 mt-0.5 text-xs">
+                  ₹{Number(selectedDealForReview.asking_price || 18500).toLocaleString()}/Q
+                </p>
+                <span className="text-[10px] text-slate-400">Original lot price</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-emerald-800 font-bold uppercase">Dealer Offered Rate</span>
+                <p className="font-black text-emerald-800 mt-0.5 text-sm">
+                  ₹{Number(selectedDealForReview.dealer_price).toLocaleString()}/Q
+                </p>
+                <span className="text-[10px] font-bold text-emerald-700">Ready for instant lock</span>
+              </div>
+            </div>
+
+            {/* Total Farmer Payout Highlight */}
+            <div className="p-4 bg-gradient-to-r from-[#062419] to-[#0b422e] text-white rounded-2xl flex items-center justify-between shadow-sm">
+              <div>
+                <p className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">
+                  Total Payout to Your Bank Account (రైతు ఖాతాకు జమ)
+                </p>
+                <h4 className="text-xl sm:text-2xl font-black text-white mt-0.5">
+                  ₹{(Number(selectedDealForReview.dealer_price) * Number(selectedDealForReview.proposed_qty || selectedDealForReview.crop_qty || 150)).toLocaleString()}
+                </h4>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold bg-emerald-800/80 border border-emerald-500/40 text-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <ShieldCheck size={11} className="text-emerald-400" />
+                  <span>100% Escrow Protected</span>
+                </span>
+                <p className="text-[9px] text-emerald-300/80 mt-1">Direct RTGS on Weighment</p>
+              </div>
+            </div>
+
+            {/* Dealer Note / Terms */}
+            {selectedDealForReview.notes && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Trader Procurement Notes:</span>
+                <p className="italic text-[11px]">&ldquo;{selectedDealForReview.notes}&rdquo;</p>
+              </div>
+            )}
+
+            {/* Status Actions */}
+            {selectedDealForReview.status === 'pending' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <button
+                  onClick={() => handleEnquiryAction(selectedDealForReview.id, 'accepted')}
+                  className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-2xl font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
+                >
+                  <CheckCircle2 size={16} />
+                  <span>Accept Deal (అంగీకరించు)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCounterEnquiry(selectedDealForReview);
+                    setCounterPrice(String(selectedDealForReview.dealer_price + 400));
+                    setDealReviewModalOpen(false);
+                    setCounterModalOpen(true);
+                  }}
+                  className="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span>Counter (ధర మార్చు)</span>
+                </button>
+
+                <button
+                  onClick={() => handleEnquiryAction(selectedDealForReview.id, 'declined')}
+                  className="w-full py-3 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <XCircle size={16} />
+                  <span>Decline (తిరస్కరించు)</span>
+                </button>
+              </div>
+            ) : selectedDealForReview.status === 'accepted' ? (
+              <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold">
+                    ✓
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-emerald-900">
+                      Deal Confirmed &amp; AP Escrow Locked!
+                    </p>
+                    <p className="text-[11px] text-emerald-700">
+                      Dealer Contact: <strong>+91 {selectedDealForReview.dealer_mobile}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => alert(`Connecting to dealer +91 ${selectedDealForReview.dealer_mobile}...`)}
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0"
+                >
+                  <Phone size={13} />
+                  <span>Call Dealer Now</span>
+                </button>
+              </div>
+            ) : (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-center text-xs text-rose-700 font-bold">
+                This deal proposal was declined. The lot remains open for other AP mandi traders.
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -15,7 +15,7 @@ export interface AppNotification {
   metadata?: any;
 }
 
-const STORAGE_KEY = 'ap_rythusetu_notifications_v3';
+const STORAGE_KEY = 'ap_rythusetu_notifications_v4';
 const EVENT_NAME = 'ap-rythusetu-notification-change';
 
 const SEED_NOTIFICATIONS: AppNotification[] = [
@@ -65,7 +65,7 @@ const SEED_NOTIFICATIONS: AppNotification[] = [
     linkTab: 'transport_vehicles'
   },
 
-  // Farmer
+  // Farmer (ALL links strictly stay within Farmer Portal: farmer_sell)
   {
     id: 'notif-frm-1',
     roleTarget: 'farmer',
@@ -75,7 +75,8 @@ const SEED_NOTIFICATIONS: AppNotification[] = [
     timestamp: Date.now() - 4 * 60 * 1000,
     unread: true,
     category: 'Bargain Offer',
-    linkTab: 'deal_and_ask'
+    linkTab: 'farmer_sell',
+    metadata: { openBargain: true, enquiryId: '101' }
   },
   {
     id: 'notif-frm-2',
@@ -86,7 +87,7 @@ const SEED_NOTIFICATIONS: AppNotification[] = [
     timestamp: Date.now() - 25 * 60 * 1000,
     unread: true,
     category: 'MSP Declaration',
-    linkTab: 'market_trends'
+    linkTab: 'farmer_sell'
   },
   {
     id: 'notif-frm-3',
@@ -97,7 +98,8 @@ const SEED_NOTIFICATIONS: AppNotification[] = [
     timestamp: Date.now() - 2 * 60 * 60 * 1000,
     unread: false,
     category: 'Transport Booking',
-    linkTab: 'transport_vehicles'
+    linkTab: 'farmer_sell',
+    metadata: { farmerTab: 'transport' }
   },
   {
     id: 'notif-frm-4',

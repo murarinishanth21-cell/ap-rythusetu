@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { FarmerListing, NegotiationOffer } from '../types';
 import { INITIAL_OFFER_HISTORY } from '../dealerData';
+import { notificationService } from '../../../services/notificationService';
 
 interface DealAndAskViewProps {
   listing?: FarmerListing;
@@ -78,6 +79,19 @@ export const DealAndAskView: React.FC<DealAndAskViewProps> = ({
       };
       setOffers([newOffer, ...offers]);
       setSubmitting(false);
+
+      // Notify Farmer with strict link to Farmer Sell view
+      notificationService.addNotification({
+        roleTarget: 'farmer',
+        title: `💼 New Deal Offer: ${activeListing.cropName}`,
+        desc: `Dealer submitted an offer of ₹${Number(offeredPrice).toLocaleString()}/Q for your ${offeredQty} Q lot in ${activeListing.district}. Review & accept offer.`,
+        category: 'Bargain Offer',
+        linkTab: 'farmer_sell',
+        district: activeListing.district,
+        metadata: { openBargain: true, enquiryId: '101' },
+        unread: true
+      });
+
       alert(`✅ Offer of ₹${Number(offeredPrice).toLocaleString()}/Q sent to farmer ${activeListing.farmerName} in real time!`);
     }, 400);
   };
