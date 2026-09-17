@@ -562,7 +562,7 @@ Respond STRICTLY in valid JSON matching this schema:
 });
 
 // SPA Fallback for client-side routing
-app.get('*', (req, res, next) => {
+app.get(/.*/, (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
   const indexPath = path.join(distPath, 'index.html');
   if (fs.existsSync(indexPath)) {
