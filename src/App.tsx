@@ -12,7 +12,15 @@ import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { api } from './api';
 import APMap from './APMap';
-import { DISTRICT_DATA, normalizeDistrictName, DISTRICT_LIST, getCropImage, getDistrictWeather } from './districtData';
+import { 
+  DISTRICT_DATA, 
+  normalizeDistrictName, 
+  DISTRICT_LIST, 
+  getCropImage, 
+  getDistrictWeather, 
+  getDistrictTeluguName, 
+  getCropTeluguName 
+} from './districtData';
 import type { CropInfo, DistrictDetail, DistrictWeather } from './districtData';
 import { DealerPortal } from './components/dealer/DealerPortal';
 
@@ -22,14 +30,15 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 export default function App() {
   const [authUser, setAuthUser] = useState<any>({
-    id: "AP-DLR-2026-3044",
-    name: "Sri Balaji Agro Traders",
-    role: "dealer",
+    id: "AP-FRM-2026-1011",
+    name: "V. Ramana Rao",
+    role: "farmer",
     district: "Guntur",
-    mobile: "9848033442"
+    mobile: "9848022331"
   }); 
-  const [loginRole, setLoginRole] = useState<'farmer'|'dealer'|'transport'|'admin'>('dealer');
-  const [portalMode, setPortalMode] = useState<'general'|'farmer'|'dealer'|'transport'|'admin'>('dealer');
+  const [loginRole, setLoginRole] = useState<'farmer'|'dealer'|'transport'|'admin'>('farmer');
+  const [portalMode, setPortalMode] = useState<'general'|'farmer'|'dealer'|'transport'|'admin'>('farmer');
+  const [farmerDistrictConfirmed, setFarmerDistrictConfirmed] = useState<boolean>(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   
@@ -558,6 +567,7 @@ export default function App() {
 
   const handleDistrictChange = (dist: string) => {
     setActiveDistrict(dist);
+    setFarmerDistrictConfirmed(true);
     if (authUser && authUser.role !== 'admin') {
       setAuthUser({ ...authUser, district: dist });
     }
@@ -876,17 +886,19 @@ export default function App() {
 
       <main className="container mx-auto px-4 py-6 max-w-7xl flex flex-col gap-8">
         
-        {/* SECTION 1: ANDHRA PRADESH DISTRICT MAP SELECTION */}
-        <section className="w-full">
-          <APMap 
-            selectedDistrict={activeDistrict} 
-            onSelectDistrict={handleDistrictChange}
-            onViewListings={handleViewListings}
-            onSelectPortalMode={handleSelectPortalMode}
-            currentPortalMode={portalMode}
-            userRole={authUser?.role}
-          />
-        </section>
+        {/* SECTION 1: ANDHRA PRADESH DISTRICT MAP SELECTION (General Market Intelligence Overview) */}
+        {portalMode === 'general' && (
+          <section className="w-full">
+            <APMap 
+              selectedDistrict={activeDistrict} 
+              onSelectDistrict={handleDistrictChange}
+              onViewListings={handleViewListings}
+              onSelectPortalMode={handleSelectPortalMode}
+              currentPortalMode={portalMode}
+              userRole={authUser?.role}
+            />
+          </section>
+        )}
 
         {/* SECTION 2: WORKSPACE ACCORDING TO PORTAL MODE */}
         <section ref={listingsSectionRef} className="flex flex-col gap-8">
@@ -1761,37 +1773,282 @@ export default function App() {
 
       {/* ======================= FARMER PORTAL (SELL WORKSPACE) ======================= */}
       {portalMode === 'farmer' && (
-        <div className="flex flex-col gap-6">
-          
-          {/* Farmer Portal Header Banner */}
-          <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white p-6 rounded-3xl shadow-md border border-emerald-800/80 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="p-3 bg-emerald-600/30 border border-emerald-400/30 rounded-2xl">
-                <Store className="w-7 h-7 text-emerald-300" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                    Farmer Portal (Sell)
-                  </span>
-                  <span className="text-xs text-emerald-200">📍 Active Mandi Hub: {activeDistrict}</span>
+        !farmerDistrictConfirmed ? (
+          /* =========================================================================
+             STEP 1: SELECT DISTRICT (మొదట జిల్లాను ఎంచుకోండి)
+             Farmer cannot access other things until district is selected!
+             ========================================================================= */
+          <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+            {/* Welcoming & Clear Step 1 Instructions */}
+            <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white p-6 md:p-8 rounded-3xl shadow-xl border border-emerald-700/60 relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="relative z-10 max-w-3xl">
+                <div className="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-black uppercase mb-3">
+                  <Sprout size={14} className="text-emerald-400" />
+                  <span>రైతు సేతు • దశ 1 (Step 1: Select Your District)</span>
                 </div>
-                <h2 className="text-xl font-black text-white mt-1">
-                  Mandi Crop Prices, Agro-Suitability & Acreage Profit Estimator
+                <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                  రైతు సోదరులకు స్వాగతం! మొదట మీ జిల్లాను ఎంచుకోండి
                 </h2>
+                <p className="text-sm text-emerald-200 mt-2 leading-relaxed">
+                  దయచేసి కింద ఇచ్చిన మ్యాప్‌లో మీ జిల్లాపై నొక్కండి లేదా 26 జిల్లాల జాబితా నుండి ఎంచుకోండి. జిల్లాను ఎంచుకున్న వెంటనే ఆ జిల్లాలోని ప్రధాన పంటలు, మార్కెట్ యార్డ్ లైవ్ ధరలు, కనీస మద్దతు ధర (MSP), వ్యాపారుల కొనుగోలు ఆఫర్లు మరియు రవాణా సౌకర్యాలు అందుబాటులోకి వస్తాయి.
+                </p>
+                <p className="text-xs text-emerald-300/80 mt-1 font-medium">
+                  (Please click your district on the map or select from the 26 AP districts below. Only after selecting your district can you access crops, mandi rates, and farmer services.)
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => handleOpenPublishWithCrop(activeCalcCrop, Math.round(parseFloat(calculatedTotalYield)))}
-                className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
-              >
-                <PlusCircle size={16} />
-                <span>Add Harvest for Sale</span>
-              </button>
+            {/* Interactive Andhra Pradesh Map */}
+            <div className="bg-white rounded-3xl p-5 md:p-6 shadow-md border border-emerald-100">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <MapPin size={20} className="text-emerald-700" />
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      ఆంధ్రప్రదేశ్ జిల్లా పటం (Click Any District on Map)
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      మ్యాప్‌పై ఉన్న మీ జిల్లాపై క్లిక్ చేసి వెంటనే పంటలను చూడండి
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
+                  26 జిల్లాలు (26 Districts)
+                </span>
+              </div>
+
+              <APMap 
+                selectedDistrict={activeDistrict} 
+                onSelectDistrict={(dist) => {
+                  handleDistrictChange(dist);
+                }}
+                onViewListings={(dist) => {
+                  handleDistrictChange(dist);
+                }}
+                onSelectPortalMode={(_, dist) => {
+                  if (dist) handleDistrictChange(dist);
+                }}
+                currentPortalMode="farmer"
+                userRole="farmer"
+              />
+            </div>
+
+            {/* 26 AP Districts Quick Selection Grid */}
+            <div className="bg-white rounded-3xl p-6 shadow-md border border-emerald-100 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    అన్ని 26 జిల్లాల జాబితా (Select From 26 Districts)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    మీ జిల్లా బటన్‌పై క్లిక్ చేసి నేరుగా పంటలు మరియు మార్కెట్ ధరలను చూడండి
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                {DISTRICT_LIST.map((dist) => {
+                  const detail = DISTRICT_DATA[dist];
+                  const telName = getDistrictTeluguName(dist);
+                  return (
+                    <button
+                      key={dist}
+                      onClick={() => handleDistrictChange(dist)}
+                      className="p-3.5 rounded-2xl border text-left transition-all duration-200 bg-slate-50/70 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md active:scale-95 group flex flex-col justify-between"
+                    >
+                      <div>
+                        <span className="text-xs font-extrabold text-slate-900 block group-hover:text-emerald-800">
+                          {dist}
+                        </span>
+                        <span className="text-sm font-bold text-emerald-700 block mt-0.5">
+                          {telName}
+                        </span>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
+                        <span className="font-semibold">{detail?.crops.length || 4} పంటలు</span>
+                        <span className="text-emerald-700 font-extrabold group-hover:translate-x-0.5 transition-transform">ఎంచుకోండి →</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
+        ) : (
+          /* =========================================================================
+             STEP 2: DISTRICT CONFIRMED
+             1. IMMEDIATELY SHOW DISTRICT CROPS SHOWCASE PROMINENTLY AT TOP!
+             2. UNLOCK ALL OTHER FARMER TOOLS (PROFIT ESTIMATOR, DEALS, TRANSPORT, AI)
+             ========================================================================= */
+          <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+            
+            {/* Active District Confirmed Banner with "Change District" button */}
+            <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white p-6 rounded-3xl shadow-lg border border-emerald-700/60 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3 bg-emerald-600/30 border border-emerald-400/30 rounded-2xl">
+                  <Store className="w-7 h-7 text-emerald-300" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                      రైతు సేవా కేంద్రం (Farmer Mandi Portal)
+                    </span>
+                    <span className="text-xs text-emerald-200 font-bold">
+                      📍 {activeDistrict} ({getDistrictTeluguName(activeDistrict)})
+                    </span>
+                  </div>
+                  <h2 className="text-xl md:text-2xl font-black text-white">
+                    {activeDistrict} జిల్లా మార్కెట్ యార్డ్ &amp; పంటల వివరాలు
+                  </h2>
+                  <p className="text-xs text-emerald-200/80 mt-0.5">
+                    {currentDistrictDetail.tagline} • నేల రకం: {currentDistrictDetail.soilType} • వార్షిక వర్షపాతం: {currentDistrictDetail.rainfall}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={() => setFarmerDistrictConfirmed(false)}
+                  className="bg-white/10 hover:bg-white/20 text-emerald-200 hover:text-white border border-white/20 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                >
+                  <MapPin size={14} className="text-emerald-400" />
+                  <span>వేరే జిల్లా ఎంచుకోండి (Change District)</span>
+                </button>
+                
+                <button
+                  onClick={() => handleOpenPublishWithCrop(activeCalcCrop, Math.round(parseFloat(calculatedTotalYield)))}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                >
+                  <PlusCircle size={15} />
+                  <span>Add Harvest for Sale</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 🌟 PROMINENT CROPS SHOWCASE SECTION (THE FIRST THING THE FARMER SEES!) */}
+            <div className="bg-white rounded-3xl p-6 shadow-md border border-emerald-100 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-lg md:text-xl font-black text-slate-900 flex items-center gap-2">
+                    <span className="text-emerald-700">🌾</span>
+                    <span>{activeDistrict} జిల్లా ప్రధాన పంటలు &amp; లైవ్ మార్కెట్ ధరలు</span>
+                    <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+                      {currentDistrictDetail.crops.length} Crops Active
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    ఆంధ్రప్రదేశ్ వ్యవసాయ మార్కెటింగ్ శాఖ లైవ్ ధరలు, MSP మరియు ఎకరాకు నికర ఆదాయాల అంచనా
+                  </p>
+                </div>
+                <div className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Mandi: {currentDistrictDetail.crops[0]?.mandiName || activeDistrict}</span>
+                </div>
+              </div>
+
+              {/* CROP CARDS GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {currentDistrictDetail.crops.map((crop) => {
+                  const isSelected = activeCalcCrop.name === crop.name;
+                  const teluguCrop = getCropTeluguName(crop.name);
+                  return (
+                    <div
+                      key={crop.name}
+                      className={cn(
+                        "rounded-2xl p-4 border transition-all flex flex-col justify-between gap-3 hover:shadow-lg",
+                        isSelected
+                          ? "bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-400/40 shadow-md"
+                          : "bg-slate-50/80 border-slate-200/90 hover:border-emerald-300"
+                      )}
+                    >
+                      <div>
+                        <div className="relative w-full h-36 rounded-xl overflow-hidden mb-3 bg-slate-200 border border-slate-200/80">
+                          <img 
+                            src={crop.image || getCropImage(crop.name)} 
+                            alt={crop.name}
+                            onError={(e) => { e.currentTarget.src = getCropImage(crop.name); }}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 left-2">
+                            <span className="text-[10px] font-extrabold bg-emerald-950/80 backdrop-blur-xs text-white px-2 py-0.5 rounded-md">
+                              {crop.suitability}
+                            </span>
+                          </div>
+                          <div className="absolute bottom-2 right-2">
+                            <span className="text-[10px] font-black bg-white/95 text-emerald-900 px-2 py-0.5 rounded-md shadow-xs">
+                              ↗ {crop.trend}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900">
+                            {crop.name}
+                          </h4>
+                          <span className="text-xs font-bold text-emerald-700 block">
+                            {teluguCrop}
+                          </span>
+                          {crop.variety && (
+                            <span className="text-[11px] text-slate-500 block truncate mt-0.5">
+                              రకం: {crop.variety}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/70 space-y-1.5 text-xs">
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-slate-500 text-[11px]">లైవ్ ధర (Live Rate):</span>
+                            <span className="text-base font-black text-emerald-800">{crop.price}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500">కనీస మద్దతు ధర (MSP):</span>
+                            <span className="font-bold text-slate-700">{crop.msp || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500">యార్డ్ రాకలు (Arrivals):</span>
+                            <span className="font-semibold text-slate-800">{crop.arrival}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] bg-white/80 p-1.5 rounded-lg border border-emerald-100">
+                            <span className="text-emerald-900 font-bold">ఎకరా నికర లాభం:</span>
+                            <span className="font-black text-emerald-700">₹{crop.estProfitPerAcre.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60">
+                        <button
+                          onClick={() => {
+                            setCalcSelectedCropName(crop.name);
+                            document.getElementById('farmer-profit-calculator')?.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className={cn(
+                            "py-2 px-2 rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1",
+                            isSelected
+                              ? "bg-emerald-700 text-white shadow-xs"
+                              : "bg-white hover:bg-emerald-100 text-slate-700 border border-slate-200"
+                          )}
+                        >
+                          <Calculator size={13} />
+                          <span>లాభం లెక్కించు</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenPublishWithCrop(crop, Math.round(crop.yieldNum * calcAcreage) || 25)}
+                          className="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition-all text-center flex items-center justify-center gap-1 shadow-xs active:scale-95"
+                        >
+                          <PlusCircle size={13} />
+                          <span>అమ్మకానికి పెట్టు</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* FARMER SUB-TAB SWITCHER & WORKSPACE (ACCESSIBLE NOW) */}
+            <div id="farmer-profit-calculator" className="flex flex-col gap-6">
 
           {/* Farmer Sub-Tab Switcher: Market & Profit vs Farm Transport */}
           <div className="flex bg-white p-2 rounded-2xl shadow-sm border border-emerald-100 gap-2 overflow-x-auto">
@@ -2476,7 +2733,9 @@ export default function App() {
             )}
 
           </div>
-        )}
+        </div>
+      )
+    )}
 
         {/* ======================= DEALER PORTAL (BUY WORKSPACE) ======================= */}
         {portalMode === 'dealer' && (

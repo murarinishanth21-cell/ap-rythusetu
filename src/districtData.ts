@@ -2890,4 +2890,37 @@ export function getDistrictCropGradeSpecs(districtName: string): any[] {
   });
 }
 
+export const DISTRICT_TELUGU_NAMES: Record<string, string> = {
+  "Guntur": "గుంటూరు",
+  "Krishna": "కృష్ణా",
+  "NTR": "ఎన్టీఆర్",
+  "Palnadu": "పల్నాడు",
+  "Bapatla": "బాపట్ల",
+  "Prakasam": "ప్రకాశం",
+  "Nellore": "నెల్లూరు",
+  "Kurnool": "కర్నూలు",
+  "Nandyal": "నంద్యాల",
+  "Ananthapur": "అనంతపురం",
+  "Sri Sathya Sai": "శ్రీ సత్యసాయి",
+  "YSR Kadapa": "వైఎస్సార్ కడప",
+  "Annamayya": "అన్నమయ్య",
+  "Chittoor": "చిత్తూరు",
+  "Tirupati": "తిరుపతి",
+  "West Godavari": "పశ్చిమ గోదావరి",
+  "East Godavari": "తూర్పు గోదావరి",
+  "Konaseema": "కోనసీమ",
+  "Dr. B.R. Ambedkar Konaseema": "డా. బి.ఆర్. అంబేద్కర్ కోనసీమ",
+  "Kakinada": "కాకినాడ",
+  "Eluru": "ఏలూరు",
+  "Visakhapatnam": "విశాఖపట్నం",
+  "Anakapalli": "అనకాపల్లి",
+  "Vizianagaram": "విజయనగరం",
+  "Srikakulam": "శ్రీకాకుళం",
+  "Parvathipuram Manyam": "మన్యం",
+  "Alluri Sitharama Raju": "అల్లూరి సీతారామరాజు"
+};
 
+export function getDistrictTeluguName(dist: string): string {
+  const norm = normalizeDistrictName(dist);
+  return DISTRICT_TELUGU_NAMES[norm] || DISTRICT_TELUGU_NAMES[dist] || dist;
+}
