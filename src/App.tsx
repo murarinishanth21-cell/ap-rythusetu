@@ -14,15 +14,22 @@ import { api } from './api';
 import APMap from './APMap';
 import { DISTRICT_DATA, normalizeDistrictName, DISTRICT_LIST, getCropImage, getDistrictWeather } from './districtData';
 import type { CropInfo, DistrictDetail, DistrictWeather } from './districtData';
+import { DealerPortal } from './components/dealer/DealerPortal';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
 export default function App() {
-  const [authUser, setAuthUser] = useState<any>(null); 
-  const [loginRole, setLoginRole] = useState<'farmer'|'dealer'|'transport'|'admin'>('farmer');
-  const [portalMode, setPortalMode] = useState<'general'|'farmer'|'dealer'|'transport'|'admin'>('general');
+  const [authUser, setAuthUser] = useState<any>({
+    id: "AP-DLR-2026-3044",
+    name: "Sri Balaji Agro Traders",
+    role: "dealer",
+    district: "Guntur",
+    mobile: "9848033442"
+  }); 
+  const [loginRole, setLoginRole] = useState<'farmer'|'dealer'|'transport'|'admin'>('dealer');
+  const [portalMode, setPortalMode] = useState<'general'|'farmer'|'dealer'|'transport'|'admin'>('dealer');
   const [isRegistering, setIsRegistering] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   
@@ -570,19 +577,27 @@ export default function App() {
     if (mode === 'general') {
       setPortalMode('general');
     } else if (mode === 'farmer') {
-      if (authUser && authUser.role === 'farmer') {
-        setPortalMode('farmer');
-      } else {
-        setLoginRole('farmer');
-        setAuthModalOpen(true);
+      if (!authUser || authUser.role !== 'farmer') {
+        setAuthUser({
+          id: "AP-FRM-2026-1011",
+          name: "V. Ramana Rao",
+          role: "farmer",
+          district: dist || activeDistrict || "Guntur",
+          mobile: "9848022331"
+        });
       }
+      setPortalMode('farmer');
     } else if (mode === 'dealer') {
-      if (authUser && authUser.role === 'dealer') {
-        setPortalMode('dealer');
-      } else {
-        setLoginRole('dealer');
-        setAuthModalOpen(true);
+      if (!authUser || authUser.role !== 'dealer') {
+        setAuthUser({
+          id: "AP-DLR-2026-3044",
+          name: "Sri Balaji Agro Traders",
+          role: "dealer",
+          district: dist || activeDistrict || "Guntur",
+          mobile: "9848033442"
+        });
       }
+      setPortalMode('dealer');
     } else if (mode === 'transport') {
       if (authUser && authUser.role === 'transport') {
         setPortalMode('transport');
@@ -690,6 +705,25 @@ export default function App() {
   const calculatedTotalRevenue = parseFloat(calculatedTotalYield) * activeCalcCrop.priceNum;
   const calculatedNetProfit = calculatedTotalRevenue - calculatedTotalCost;
   const calculatedROI = calculatedTotalCost > 0 ? ((calculatedNetProfit / calculatedTotalCost) * 100).toFixed(0) : "0";
+
+  if ((portalMode as any) === 'dealer') {
+    return (
+      <DealerPortal
+        initialDistrict={activeDistrict}
+        onSwitchToFarmerPortal={() => {
+          setAuthUser({
+            id: "AP-FRM-2026-1011",
+            name: "V. Ramana Rao",
+            role: "farmer",
+            district: activeDistrict || "Guntur",
+            mobile: "9848022331"
+          });
+          setPortalMode('farmer');
+          setLoginRole('farmer');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-24">

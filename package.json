@@ -17,6 +17,9 @@
   "dependencies": {
     "@google/genai": "^2.21.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/three": "^0.185.4",
+    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "cors": "^2.8.6",
     "d3-geo": "^3.1.1",
@@ -31,7 +34,8 @@
     "react-simple-maps": "^3.0.0",
     "sqlite3": "^6.0.1",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

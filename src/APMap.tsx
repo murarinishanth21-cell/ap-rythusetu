@@ -22,6 +22,7 @@ interface APMapProps {
   onSelectPortalMode?: (mode: 'general' | 'farmer' | 'dealer' | 'transport' | 'admin', district?: string) => void;
   currentPortalMode?: 'general' | 'farmer' | 'dealer' | 'transport' | 'admin';
   userRole?: 'farmer' | 'dealer' | 'transport' | 'admin';
+  standaloneMapOnly?: boolean;
 }
 
 const DISTRICT_COLORS: Record<string, string> = {
@@ -58,7 +59,8 @@ export default function APMap({
   onSelectDistrict, 
   onViewListings,
   onSelectPortalMode,
-  currentPortalMode = 'farmer'
+  currentPortalMode = 'farmer',
+  standaloneMapOnly = false
 }: APMapProps) {
   const [geoData, setGeoData] = useState<any>(null);
   const [hoveredDistrict, setHoveredDistrict] = useState<string | null>(null);
@@ -149,6 +151,92 @@ export default function APMap({
           <span className="relative inline-flex rounded-full h-5 w-5 bg-emerald-600"></span>
         </span>
         <p className="text-sm font-bold text-emerald-950">Loading Andhra Pradesh Interactive Digital Map...</p>
+      </div>
+    );
+  }
+
+  if (standaloneMapOnly) {
+    return (
+      <div className="relative w-full h-full min-h-[460px] flex items-center justify-center bg-gradient-to-br from-emerald-900/5 via-white to-emerald-950/10 rounded-2xl p-2 border border-emerald-900/10 overflow-hidden shadow-inner">
+        <svg 
+          viewBox="0 0 640 540" 
+          className="w-full h-full max-h-[520px] select-none"
+          style={{ filter: "drop-shadow(0 12px 24px rgba(4, 120, 87, 0.18))" }}
+        >
+          <defs>
+            <filter id="districtGlowStand" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Render District Polygons */}
+          <g>
+            {districtFeatures.map((item, idx) => {
+              const isSelected = normalizeDistrictName(selectedDistrict) === item.normName;
+              const isHovered = hoveredDistrict === item.normName;
+              const baseFill = DISTRICT_COLORS[item.normName] || "#059669";
+
+              return (
+                <path
+                  key={`${item.normName}-${idx}`}
+                  d={item.pathD}
+                  fill={isSelected ? "#22c55e" : isHovered ? "#10b981" : baseFill}
+                  fillOpacity={isSelected ? 1 : isHovered ? 0.95 : 0.82}
+                  stroke="#ffffff"
+                  strokeWidth={isSelected ? 2.8 : isHovered ? 1.8 : 0.9}
+                  filter={isSelected ? "url(#districtGlowStand)" : undefined}
+                  className="cursor-pointer transition-all duration-200"
+                  onMouseEnter={() => setHoveredDistrict(item.normName)}
+                  onMouseLeave={() => setHoveredDistrict(null)}
+                  onClick={() => onSelectDistrict(item.normName)}
+                >
+                  <title>{item.normName} District - Click to Select</title>
+                </path>
+              );
+            })}
+          </g>
+
+          {/* Render District Labels */}
+          <g className="pointer-events-none">
+            {labelPositions.map(({ name, x, y }) => {
+              const isSelected = normalizeDistrictName(selectedDistrict) === name;
+              const keyDistricts = [
+                "Guntur", "Krishna", "West Godavari", "Ananthapur", "Kurnool", 
+                "Nellore", "Prakasam", "YSR Kadapa", "Chittoor", "Visakhapatnam", 
+                "Srikakulam", "East Godavari", "NTR", "Palnadu", "Eluru", "Bapatla"
+              ];
+
+              if (!keyDistricts.includes(name) && !isSelected) return null;
+
+              return (
+                <text
+                  key={`lbl-stand-${name}`}
+                  x={x}
+                  y={y + 3}
+                  textAnchor="middle"
+                  style={{
+                    fontFamily: "system-ui, -apple-system, sans-serif",
+                    fontSize: isSelected ? "11px" : "9px",
+                    fontWeight: isSelected ? 900 : 700,
+                    fill: isSelected ? "#ffffff" : "rgba(255,255,255,0.92)",
+                    textShadow: "0 1px 3px rgba(0,0,0,0.8)"
+                  }}
+                >
+                  {name}
+                </text>
+              );
+            })}
+          </g>
+        </svg>
+
+        {/* Floating tooltip on hover */}
+        {hoveredDistrict && (
+          <div className="absolute top-3 left-3 bg-[#062419]/90 backdrop-blur-xs text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-500/30 shadow-lg pointer-events-none flex items-center gap-2 z-10">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>📍 {hoveredDistrict} (Click to select)</span>
+          </div>
+        )}
       </div>
     );
   }

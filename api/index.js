@@ -472,6 +472,8 @@ app.post('/api/ai/chat', async (req, res) => {
         : "Your voice message was processed and recorded." 
     });
   }
+});
+
 // SPA Fallback for client-side routing
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
