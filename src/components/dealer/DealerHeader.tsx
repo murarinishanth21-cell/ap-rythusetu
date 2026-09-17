@@ -46,6 +46,7 @@ interface DealerHeaderProps {
   onSignOutUser?: () => void;
   onOpenAuthModal?: (mode?: 'login' | 'signup') => void;
   activeTab?: DealerActiveTab;
+  onSelectPortalMode?: (mode: 'general' | 'farmer' | 'dealer' | 'transport' | 'admin', district?: string) => void;
 }
 
 export const DealerHeader: React.FC<DealerHeaderProps> = ({
@@ -70,7 +71,8 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
   onLoginUser,
   onSignOutUser,
   onOpenAuthModal,
-  activeTab = 'dashboard'
+  activeTab: _activeTab = 'dashboard',
+  onSelectPortalMode
 }) => {
   const [districtDropdownOpen, setDistrictDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
@@ -451,6 +453,51 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
 
       {/* Right Controls: District Selector, Notifications, Dealer Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* AP Unified Portal Navigation Switcher */}
+        {onSelectPortalMode && (
+          <div className="hidden xl:flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 shadow-2xs">
+            <button
+              onClick={() => onSelectPortalMode('general', activeDistrict)}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              title="AP Mandi Market Trends & Heatmap"
+            >
+              <span>📈</span>
+              <span>Trends</span>
+            </button>
+            <button
+              onClick={() => onSelectPortalMode('farmer', activeDistrict)}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              title="Farmer Sell Portal"
+            >
+              <span>🌾</span>
+              <span>Farmer</span>
+            </button>
+            <button
+              className="px-2.5 py-1 text-[11px] font-black text-white bg-teal-800 rounded-xl shadow-xs flex items-center gap-1"
+              title="Current: Dealer Buy Portal"
+            >
+              <span>🛒</span>
+              <span>Dealer</span>
+            </button>
+            <button
+              onClick={() => onSelectPortalMode('transport', activeDistrict)}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              title="Transport & Logistics Hub"
+            >
+              <span>🚚</span>
+              <span>Transport</span>
+            </button>
+            <button
+              onClick={() => onSelectPortalMode('admin')}
+              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              title="Govt Agriculture Command Center"
+            >
+              <span>🏛️</span>
+              <span>Admin</span>
+            </button>
+          </div>
+        )}
+
         {/* District Selector Pill */}
         <div className="relative">
           <button
@@ -558,8 +605,8 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
           )}
         </div>
 
-        {/* User Profile or Login Button - HIDE on dashboard; ONLY show on Farmer, Dealer, Transport, Shramik, Admin portals */}
-        {activeTab !== 'dashboard' && currentUser && (
+        {/* User Profile or Login Button - Always visible for current role */}
+        {currentUser && (
           currentUser.isLoggedIn ? (
             /* Logged-In User Profile Badge */
             <div className="relative">
@@ -596,7 +643,7 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
                     className="fixed inset-0 z-30"
                     onClick={() => setUserDropdownOpen(false)}
                   />
-                  <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 p-3.5 z-40">
+                  <div className="absolute right-0 mt-1.5 w-76 bg-white rounded-2xl shadow-xl border border-slate-100 p-3.5 z-40">
                     <div className="pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-2.5">
                         <div className={`w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-black ${
@@ -619,6 +666,75 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
                       <div className="mt-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl space-y-0.5">
                         <p>Mobile: +91 {currentUser.mobile || '9848011223'}</p>
                         <p>Jurisdiction: {currentUser.district || activeDistrict} Mandis</p>
+                      </div>
+                    </div>
+
+                    {/* 1-Click Role Persona Switcher */}
+                    <div className="pt-2 border-b border-slate-100 pb-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 pb-1">
+                        Switch Persona / Portal (1-Click)
+                      </p>
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            if (onLoginUser) onLoginUser('dealer');
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold text-left transition-colors ${
+                            currentUser.role === 'dealer' ? 'bg-teal-50 text-teal-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5">🛒 Dealer (Sri Balaji)</span>
+                          {currentUser.role === 'dealer' && <span className="text-[10px] text-teal-600 font-bold">Active</span>}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            if (onSelectPortalMode) {
+                              onSelectPortalMode('farmer', activeDistrict);
+                            } else if (onLoginUser) {
+                              onLoginUser('farmer');
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold text-left transition-colors ${
+                            currentUser.role === 'farmer' ? 'bg-emerald-50 text-emerald-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5">🌾 Farmer (V. Ramana Rao)</span>
+                          {currentUser.role === 'farmer' && <span className="text-[10px] text-emerald-600 font-bold">Active</span>}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            if (onSelectPortalMode) {
+                              onSelectPortalMode('transport', activeDistrict);
+                            } else if (onLoginUser) {
+                              onLoginUser('transport');
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold text-left transition-colors ${
+                            currentUser.role === 'transport' ? 'bg-blue-50 text-blue-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5">🚚 Transport (AP GreenLine)</span>
+                          {currentUser.role === 'transport' && <span className="text-[10px] text-blue-600 font-bold">Active</span>}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            if (onSelectPortalMode) {
+                              onSelectPortalMode('admin');
+                            } else if (onLoginUser) {
+                              onLoginUser('admin');
+                            }
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold text-left transition-colors ${
+                            currentUser.role === 'admin' ? 'bg-purple-50 text-purple-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5">🏛️ Admin (Command Center)</span>
+                          {currentUser.role === 'admin' && <span className="text-[10px] text-purple-600 font-bold">Active</span>}
+                        </button>
                       </div>
                     </div>
 

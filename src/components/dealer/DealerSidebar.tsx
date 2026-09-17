@@ -57,6 +57,7 @@ interface DealerSidebarProps {
   currentUser?: UserProfile;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  onSelectPortalMode?: (mode: 'general' | 'farmer' | 'dealer' | 'transport' | 'admin', district?: string) => void;
 }
 
 export const DealerSidebar: React.FC<DealerSidebarProps> = ({
@@ -66,7 +67,8 @@ export const DealerSidebar: React.FC<DealerSidebarProps> = ({
   currentRole,
   currentUser,
   isOpenMobile = false,
-  onCloseMobile
+  onCloseMobile,
+  onSelectPortalMode
 }) => {
   const navSections = [
     {
@@ -226,27 +228,57 @@ export const DealerSidebar: React.FC<DealerSidebarProps> = ({
         </div>
 
         {/* Bottom Switcher Card */}
-        <div className="p-3 border-t border-[#0d3b2a]/70">
+        <div className="p-3 border-t border-[#0d3b2a]/70 space-y-2">
           <button
-            onClick={onSwitchPortalRole}
-            className="w-full bg-[#051c14] hover:bg-[#082a1e] border border-emerald-800/80 rounded-xl p-3 flex items-center justify-between text-left transition-all group shadow-sm"
+            onClick={() => {
+              if (onSelectPortalMode) {
+                onSelectPortalMode('farmer');
+              } else {
+                onSwitchPortalRole();
+              }
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="w-full bg-[#051c14] hover:bg-[#082a1e] border border-emerald-800/80 rounded-xl p-2.5 flex items-center justify-between text-left transition-all group shadow-sm"
           >
             <div className="flex items-center gap-2">
-              <span className="text-sm">{currentRole === 'dealer' ? '🌾' : '🛒'}</span>
+              <span className="text-base">🌾</span>
               <div>
-                <p className="text-[11px] font-bold text-emerald-200 group-hover:text-white leading-tight">
-                  Switch to
+                <p className="text-[10px] font-bold text-emerald-300 group-hover:text-white leading-tight">
+                  Switch Portal
                 </p>
-                <p className="text-xs font-extrabold text-emerald-100 group-hover:text-white leading-tight">
-                  {currentRole === 'dealer' ? 'Farmer Sell Portal' : 'Dealer Buy Portal'}
+                <p className="text-xs font-black text-emerald-100 group-hover:text-white leading-tight">
+                  Farmer Sell Portal
                 </p>
               </div>
             </div>
             <ArrowRight
-              size={15}
+              size={14}
               className="text-emerald-400 group-hover:text-white group-hover:translate-x-1 transition-transform"
             />
           </button>
+
+          {onSelectPortalMode && (
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <button
+                onClick={() => {
+                  onSelectPortalMode('transport');
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className="bg-[#062419] hover:bg-[#0c3827] border border-emerald-900 text-emerald-200 text-[10px] font-bold py-1.5 px-2 rounded-lg text-center transition-colors truncate"
+              >
+                🚚 Transport
+              </button>
+              <button
+                onClick={() => {
+                  onSelectPortalMode('admin');
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className="bg-[#062419] hover:bg-[#0c3827] border border-emerald-900 text-emerald-200 text-[10px] font-bold py-1.5 px-2 rounded-lg text-center transition-colors truncate"
+              >
+                🏛️ Admin
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>

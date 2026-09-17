@@ -51,7 +51,7 @@ export const DEFAULT_ROLE_SESSIONS: RoleSessions = {
     mobile: '9848011223',
     district: 'Guntur',
     avatarInitials: 'SB',
-    isLoggedIn: false
+    isLoggedIn: true
   },
   farmer: {
     name: 'V. Ramana Rao',
@@ -60,7 +60,7 @@ export const DEFAULT_ROLE_SESSIONS: RoleSessions = {
     mobile: '9848022331',
     district: 'Guntur',
     avatarInitials: 'VR',
-    isLoggedIn: false
+    isLoggedIn: true
   },
   transport: {
     name: 'AP Rythu Vahini Transport',
@@ -69,7 +69,7 @@ export const DEFAULT_ROLE_SESSIONS: RoleSessions = {
     mobile: '9848033445',
     district: 'Guntur',
     avatarInitials: 'RV',
-    isLoggedIn: false
+    isLoggedIn: true
   },
   worker: {
     name: 'Mandi Hamali & Agritech Union',
@@ -78,7 +78,7 @@ export const DEFAULT_ROLE_SESSIONS: RoleSessions = {
     mobile: '9848044556',
     district: 'Guntur',
     avatarInitials: 'MH',
-    isLoggedIn: false
+    isLoggedIn: true
   },
   admin: {
     name: 'AP Agriculture Directorate Admin',
@@ -87,7 +87,7 @@ export const DEFAULT_ROLE_SESSIONS: RoleSessions = {
     mobile: '9848000001',
     district: 'Amaravati',
     avatarInitials: 'AD',
-    isLoggedIn: false
+    isLoggedIn: true
   }
 };
 
@@ -110,8 +110,8 @@ const getStoredRoleSessions = (): RoleSessions => {
   return DEFAULT_ROLE_SESSIONS;
 };
 
-export const getRoleForTab = (tab: DealerActiveTab): 'farmer' | 'dealer' | 'transport' | 'worker' | 'admin' | null => {
-  if (tab === 'dashboard') return null; // Dashboard has NO profile!
+export const getRoleForTab = (tab: DealerActiveTab): 'farmer' | 'dealer' | 'transport' | 'worker' | 'admin' => {
+  if (tab === 'dashboard') return 'dealer';
   if (tab === 'farmer_sell' || tab === 'profit_calc') return 'farmer';
   if (tab === 'transport_vehicles' || tab === 'warehouse_storage') return 'transport';
   if (tab === 'labour_hub') return 'worker';
@@ -203,11 +203,13 @@ const AdminAccessGate: React.FC<AdminAccessGateProps> = ({
 interface DealerPortalProps {
   initialDistrict?: string;
   onSwitchToFarmerPortal: () => void;
+  onSelectPortalMode?: (mode: 'general' | 'farmer' | 'dealer' | 'transport' | 'admin', district?: string) => void;
 }
 
 export const DealerPortal: React.FC<DealerPortalProps> = ({
   initialDistrict = 'Guntur',
-  onSwitchToFarmerPortal: _onSwitchToFarmerPortal
+  onSwitchToFarmerPortal,
+  onSelectPortalMode
 }) => {
   const [activeTab, setActiveTab] = useState<DealerActiveTab>('dashboard');
   const [activeDistrict, setActiveDistrict] = useState<string>(initialDistrict);
@@ -330,10 +332,16 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
   };
 
   const handleSwitchPortalRole = () => {
-    if (currentRole === 'dealer') {
-      handleLoginUser('farmer');
+    if (onSwitchToFarmerPortal) {
+      onSwitchToFarmerPortal();
+    } else if (onSelectPortalMode) {
+      onSelectPortalMode('farmer', activeDistrict);
     } else {
-      handleLoginUser('dealer');
+      if (currentRole === 'dealer') {
+        handleLoginUser('farmer');
+      } else {
+        handleLoginUser('dealer');
+      }
     }
   };
 
@@ -425,6 +433,7 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onSwitchPortalRole={handleSwitchPortalRole}
+        onSelectPortalMode={onSelectPortalMode}
         currentRole={currentRole}
         currentUser={currentHeaderUser || roleSessions.dealer}
         isOpenMobile={mobileSidebarOpen}
@@ -450,6 +459,7 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
           onSignOutUser={handleSignOutUser}
           onOpenAuthModal={(mode) => handleOpenAuthModal(undefined, mode)}
           activeTab={activeTab}
+          onSelectPortalMode={onSelectPortalMode}
         />
 
         {/* Main Canvas Body */}

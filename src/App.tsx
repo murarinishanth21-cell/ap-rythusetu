@@ -6,7 +6,7 @@ import {
   Clock, X, MessageSquareWarning, TrendingUp, ShoppingCart, Store,
   Calculator, PlusCircle, Lock, Building2, Truck, Calendar, Key,
   ShieldCheck, CheckCircle2, Navigation, CloudSun, Droplets, Wind,
-  Thermometer, Sun, Sprout
+  Thermometer, Sun, Sprout, ChevronDown, LogOut
 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -44,6 +44,18 @@ export default function App() {
   
   const [activeDistrict, setActiveDistrict] = useState('Guntur');
   const [showStatewide, setShowStatewide] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Portal Sub-Tabs
   const [adminTab, setAdminTab] = useState<'complaints' | 'transport' | 'marketplace'>('complaints');
@@ -597,6 +609,7 @@ export default function App() {
         });
       }
       setPortalMode('farmer');
+      setFarmerDistrictConfirmed(true);
     } else if (mode === 'dealer') {
       if (!authUser || authUser.role !== 'dealer') {
         setAuthUser({
@@ -609,20 +622,28 @@ export default function App() {
       }
       setPortalMode('dealer');
     } else if (mode === 'transport') {
-      if (authUser && authUser.role === 'transport') {
-        setPortalMode('transport');
-      } else {
-        setLoginRole('transport');
-        setAuthModalOpen(true);
+      if (!authUser || authUser.role !== 'transport') {
+        setAuthUser({
+          id: "AP-TRP-2026-8801",
+          name: "AP GreenLine Logistics",
+          role: "transport",
+          district: dist || activeDistrict || "Guntur",
+          mobile: "9848033445"
+        });
       }
+      setPortalMode('transport');
     } else if (mode === 'admin') {
-      if (authUser && authUser.role === 'admin') {
-        setPortalMode('admin');
-        setActiveDistrict('Statewide');
-      } else {
-        setLoginRole('admin');
-        setAuthModalOpen(true);
+      if (!authUser || authUser.role !== 'admin') {
+        setAuthUser({
+          id: "AP-DIR-ADM-01",
+          name: "AP Govt Agriculture Command Center",
+          role: "admin",
+          district: "Statewide",
+          mobile: "9848000001"
+        });
       }
+      setActiveDistrict('Statewide');
+      setPortalMode('admin');
     }
 
     if (listingsSectionRef.current) {
@@ -744,16 +765,9 @@ export default function App() {
     return (
       <DealerPortal
         initialDistrict={activeDistrict}
+        onSelectPortalMode={(mode, dist) => handleSelectPortalMode(mode as any, dist)}
         onSwitchToFarmerPortal={() => {
-          setAuthUser({
-            id: "AP-FRM-2026-1011",
-            name: "V. Ramana Rao",
-            role: "farmer",
-            district: activeDistrict || "Guntur",
-            mobile: "9848022331"
-          });
-          setPortalMode('farmer');
-          setLoginRole('farmer');
+          handleSelectPortalMode('farmer', activeDistrict);
         }}
       />
     );
@@ -854,32 +868,202 @@ export default function App() {
             <span className="text-xs font-black text-white">{activeDistrict}</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {authUser ? (
-              <>
-                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
-                  <UserCircle size={20} className="text-emerald-300" />
-                  <div className="flex flex-col text-left">
-                    <span className="text-xs font-bold leading-none">{authUser.name}</span>
-                    <span className="text-[10px] text-emerald-300 leading-tight capitalize">{authUser.role} • {authUser.id}</span>
+          <div className="flex items-center gap-3" ref={profileMenuRef}>
+            {/* Interactive User Profile Badge & Persona Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-full border border-white/15 transition-all text-left group active:scale-95 cursor-pointer shadow-xs"
+                title="Manage Profile & Switch AP Role Persona"
+              >
+                <div className={`w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-black shadow-xs ${
+                  authUser?.role === 'dealer' ? 'bg-teal-600' :
+                  authUser?.role === 'transport' ? 'bg-blue-600' :
+                  authUser?.role === 'admin' ? 'bg-amber-600' :
+                  'bg-emerald-600'
+                }`}>
+                  {authUser ? (
+                    authUser.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                  ) : (
+                    <UserCircle size={18} />
+                  )}
+                </div>
+
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-bold text-white leading-tight">
+                      {authUser ? authUser.name : "Guest / Public Mode"}
+                    </span>
+                    <ShieldCheck size={12} className="text-emerald-400" />
+                  </div>
+                  <span className="text-[10px] text-emerald-300 leading-tight capitalize">
+                    {authUser ? `${authUser.role} • ${authUser.id}` : "Select Persona ▾"}
+                  </span>
+                </div>
+
+                <ChevronDown size={13} className="text-emerald-300 group-hover:text-white transition-colors" />
+              </button>
+
+              {/* Profile & Role Switcher Floating Menu */}
+              {profileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-100 text-slate-800">
+                  {/* Active Persona Header */}
+                  <div className="pb-3 border-b border-slate-100 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full text-white flex items-center justify-center text-sm font-black shadow-xs ${
+                      authUser?.role === 'dealer' ? 'bg-teal-700' :
+                      authUser?.role === 'transport' ? 'bg-blue-700' :
+                      authUser?.role === 'admin' ? 'bg-amber-600' :
+                      'bg-emerald-700'
+                    }`}>
+                      {authUser ? (
+                        authUser.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                      ) : 'AP'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-black text-slate-900 truncate">
+                        {authUser ? authUser.name : "Public Citizen Mode"}
+                      </h4>
+                      <p className="text-[10px] font-bold text-emerald-700 capitalize flex items-center gap-1 mt-0.5">
+                        <CheckCircle2 size={11} className="text-emerald-600" />
+                        <span>Verified AP {authUser?.role || 'Guest'}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        ID: {authUser?.id || 'AP-PUBLIC-01'} • 📍 {authUser?.district || activeDistrict}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 1-Click Role Switcher */}
+                  <div className="pt-2.5 pb-2 border-b border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider px-1 pb-1.5 flex items-center justify-between">
+                      <span>Switch Role Persona (1-Click)</span>
+                      <span className="text-[9px] text-emerald-600 font-bold">Real AP Profiles</span>
+                    </p>
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleSelectPortalMode('farmer', activeDistrict);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
+                          authUser?.role === 'farmer' && portalMode === 'farmer'
+                            ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 font-black'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🌾</span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 leading-tight">Farmer (V. Ramana Rao)</p>
+                            <p className="text-[10px] text-slate-500 leading-tight">Sell Produce • RBK Grading • Soil AI</p>
+                          </div>
+                        </div>
+                        {authUser?.role === 'farmer' && portalMode === 'farmer' && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">Active</span>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleSelectPortalMode('dealer', activeDistrict);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
+                          authUser?.role === 'dealer' && portalMode === 'dealer'
+                            ? 'bg-teal-50 text-teal-900 border border-teal-200 font-black'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🛒</span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 leading-tight">Dealer (Sri Balaji Agro Traders)</p>
+                            <p className="text-[10px] text-slate-500 leading-tight">Procurement • Mandi Bids • Cold Storage</p>
+                          </div>
+                        </div>
+                        {authUser?.role === 'dealer' && portalMode === 'dealer' && (
+                          <span className="text-[10px] font-bold text-teal-700 bg-teal-100 px-1.5 py-0.5 rounded-full">Active</span>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleSelectPortalMode('transport', activeDistrict);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
+                          authUser?.role === 'transport' && portalMode === 'transport'
+                            ? 'bg-blue-50 text-blue-900 border border-blue-200 font-black'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🚚</span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 leading-tight">Transport (AP GreenLine Logistics)</p>
+                            <p className="text-[10px] text-slate-500 leading-tight">Live Fleet Dispatch • Trip OTP Verification</p>
+                          </div>
+                        </div>
+                        {authUser?.role === 'transport' && portalMode === 'transport' && (
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full">Active</span>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleSelectPortalMode('admin');
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-left transition-all ${
+                          authUser?.role === 'admin' && portalMode === 'admin'
+                            ? 'bg-amber-50 text-amber-900 border border-amber-200 font-black'
+                            : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🏛️</span>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 leading-tight">Govt Admin (Command Center)</p>
+                            <p className="text-[10px] text-slate-500 leading-tight">State Grievances • Mandi MSP Audit</p>
+                          </div>
+                        </div>
+                        {authUser?.role === 'admin' && portalMode === 'admin' && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">Active</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Actions: Custom Sign In & Sign Out */}
+                  <div className="pt-2 space-y-1">
+                    <button
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        setAuthModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-xl transition-colors text-left"
+                    >
+                      <LogIn size={14} className="text-emerald-700" />
+                      <span>Custom Passcode Sign In / Register</span>
+                    </button>
+
+                    {authUser && (
+                      <button
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          setAuthUser(null);
+                          setPortalMode('general');
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors text-left"
+                      >
+                        <LogOut size={14} />
+                        <span>Sign Out (Reset to Public Market Trends)</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-                <button 
-                  onClick={() => setAuthUser(null)} 
-                  className="text-xs font-bold bg-red-500/20 text-red-200 hover:bg-red-600 hover:text-white px-3 py-1.5 rounded-full transition-colors"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <button 
-                onClick={() => setAuthModalOpen(true)}
-                className="text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-emerald-950 px-4 py-2 rounded-full transition-all shadow-md flex items-center gap-1.5 active:scale-95"
-              >
-                <LogIn size={15} />
-                <span>Sign In / Register</span>
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </header>
