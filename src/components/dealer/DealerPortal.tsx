@@ -202,13 +202,13 @@ const AdminAccessGate: React.FC<AdminAccessGateProps> = ({
 
 interface DealerPortalProps {
   initialDistrict?: string;
-  onSwitchToFarmerPortal: () => void;
+  onSwitchToFarmerPortal?: () => void;
   onSelectPortalMode?: (mode: 'general' | 'farmer' | 'dealer' | 'transport' | 'admin', district?: string) => void;
 }
 
 export const DealerPortal: React.FC<DealerPortalProps> = ({
   initialDistrict = 'Guntur',
-  onSwitchToFarmerPortal,
+  onSwitchToFarmerPortal: _onSwitchToFarmerPortal,
   onSelectPortalMode
 }) => {
   const [activeTab, setActiveTab] = useState<DealerActiveTab>('dashboard');
@@ -331,17 +331,38 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
     setEnqNotes('');
   };
 
+  const handleSelectPortalModeInternal = (mode: 'general' | 'farmer' | 'dealer' | 'transport' | 'admin', district?: string) => {
+    if (district) {
+      setActiveDistrict(district);
+    }
+    if (mode === 'farmer') {
+      setCurrentRole('farmer');
+      setActiveTab('farmer_sell');
+      handleLoginUser('farmer', undefined, undefined, undefined, district || activeDistrict);
+    } else if (mode === 'dealer') {
+      setCurrentRole('dealer');
+      setActiveTab('dashboard');
+      handleLoginUser('dealer', undefined, undefined, undefined, district || activeDistrict);
+    } else if (mode === 'transport') {
+      setActiveTab('transport_vehicles');
+      handleLoginUser('transport', undefined, undefined, undefined, district || activeDistrict);
+    } else if (mode === 'admin') {
+      setActiveTab('grievances');
+      handleLoginUser('admin', undefined, undefined, undefined, 'Amaravati');
+    } else if (mode === 'general') {
+      setActiveTab('market_trends');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (onSelectPortalMode) {
+      onSelectPortalMode(mode, district);
+    }
+  };
+
   const handleSwitchPortalRole = () => {
-    if (onSwitchToFarmerPortal) {
-      onSwitchToFarmerPortal();
-    } else if (onSelectPortalMode) {
-      onSelectPortalMode('farmer', activeDistrict);
+    if (currentRole === 'dealer') {
+      handleSelectPortalModeInternal('farmer');
     } else {
-      if (currentRole === 'dealer') {
-        handleLoginUser('farmer');
-      } else {
-        handleLoginUser('dealer');
-      }
+      handleSelectPortalModeInternal('dealer');
     }
   };
 
@@ -433,7 +454,7 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         onSwitchPortalRole={handleSwitchPortalRole}
-        onSelectPortalMode={onSelectPortalMode}
+        onSelectPortalMode={handleSelectPortalModeInternal}
         currentRole={currentRole}
         currentUser={currentHeaderUser || roleSessions.dealer}
         isOpenMobile={mobileSidebarOpen}
@@ -459,7 +480,7 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
           onSignOutUser={handleSignOutUser}
           onOpenAuthModal={(mode) => handleOpenAuthModal(undefined, mode)}
           activeTab={activeTab}
-          onSelectPortalMode={onSelectPortalMode}
+          onSelectPortalMode={handleSelectPortalModeInternal}
         />
 
         {/* Main Canvas Body */}

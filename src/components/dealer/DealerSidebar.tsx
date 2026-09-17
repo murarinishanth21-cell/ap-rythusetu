@@ -14,7 +14,6 @@ import {
   Settings,
   HelpCircle,
   BookOpen,
-  ArrowRight,
   X,
   MapPin,
   Calculator,
@@ -63,8 +62,8 @@ interface DealerSidebarProps {
 export const DealerSidebar: React.FC<DealerSidebarProps> = ({
   activeTab,
   onSelectTab,
-  onSwitchPortalRole,
-  currentRole,
+  onSwitchPortalRole: _onSwitchPortalRole,
+  currentRole: _currentRole,
   currentUser,
   isOpenMobile = false,
   onCloseMobile,
@@ -160,7 +159,15 @@ export const DealerSidebar: React.FC<DealerSidebarProps> = ({
                 </span>
               </div>
               <p className="text-[10px] font-bold tracking-wider text-emerald-400 mt-0.5 uppercase">
-                {currentRole === 'dealer' ? 'DEALER PORTAL' : 'FARMER PORTAL'}
+                {activeTab === 'farmer_sell' || activeTab === 'profit_calc'
+                  ? 'FARMER PORTAL'
+                  : activeTab === 'transport_vehicles' || activeTab === 'warehouse_storage' || activeTab === 'labour_hub'
+                  ? 'TRANSPORT PORTAL'
+                  : activeTab === 'grievances' || activeTab === 'stock_inventory'
+                  ? 'ADMIN COMMAND'
+                  : activeTab === 'market_trends' || activeTab === 'ap_map'
+                  ? 'MARKET TRENDS'
+                  : 'DEALER PORTAL'}
               </p>
             </div>
           </div>
@@ -227,58 +234,90 @@ export const DealerSidebar: React.FC<DealerSidebarProps> = ({
           ))}
         </div>
 
-        {/* Bottom Switcher Card */}
+        {/* Bottom Switcher Card: 4 Portals */}
         <div className="p-3 border-t border-[#0d3b2a]/70 space-y-2">
-          <button
-            onClick={() => {
-              if (onSelectPortalMode) {
-                onSelectPortalMode('farmer');
-              } else {
-                onSwitchPortalRole();
-              }
-              if (onCloseMobile) onCloseMobile();
-            }}
-            className="w-full bg-[#051c14] hover:bg-[#082a1e] border border-emerald-800/80 rounded-xl p-2.5 flex items-center justify-between text-left transition-all group shadow-sm"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-base">🌾</span>
-              <div>
-                <p className="text-[10px] font-bold text-emerald-300 group-hover:text-white leading-tight">
-                  Switch Portal
-                </p>
-                <p className="text-xs font-black text-emerald-100 group-hover:text-white leading-tight">
-                  Farmer Sell Portal
-                </p>
-              </div>
-            </div>
-            <ArrowRight
-              size={14}
-              className="text-emerald-400 group-hover:text-white group-hover:translate-x-1 transition-transform"
-            />
-          </button>
+          <div className="px-1 text-[10px] font-bold tracking-wider text-emerald-400/60 uppercase">
+            Quick Switch Portal
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => {
+                if (onSelectPortalMode) {
+                  onSelectPortalMode('farmer');
+                } else {
+                  onSelectTab('farmer_sell');
+                }
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
+                activeTab === 'farmer_sell' || activeTab === 'profit_calc'
+                  ? 'bg-emerald-800 border-emerald-400 text-white font-black shadow-inner'
+                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
+              }`}
+            >
+              <span className="text-sm">🌾</span>
+              <span className="text-[11px] font-bold truncate">Farmer</span>
+            </button>
 
-          {onSelectPortalMode && (
-            <div className="grid grid-cols-2 gap-1.5 pt-1">
-              <button
-                onClick={() => {
+            <button
+              onClick={() => {
+                if (onSelectPortalMode) {
+                  onSelectPortalMode('dealer');
+                } else {
+                  onSelectTab('dashboard');
+                }
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
+                activeTab === 'dashboard' || activeTab === 'buy_produce' || activeTab === 'deal_and_ask' || activeTab === 'price_alerts'
+                  ? 'bg-teal-800 border-teal-400 text-white font-black shadow-inner'
+                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
+              }`}
+            >
+              <span className="text-sm">🛒</span>
+              <span className="text-[11px] font-bold truncate">Dealer</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => {
+                if (onSelectPortalMode) {
                   onSelectPortalMode('transport');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-                className="bg-[#062419] hover:bg-[#0c3827] border border-emerald-900 text-emerald-200 text-[10px] font-bold py-1.5 px-2 rounded-lg text-center transition-colors truncate"
-              >
-                🚚 Transport
-              </button>
-              <button
-                onClick={() => {
+                } else {
+                  onSelectTab('transport_vehicles');
+                }
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
+                activeTab === 'transport_vehicles' || activeTab === 'warehouse_storage' || activeTab === 'labour_hub'
+                  ? 'bg-blue-800 border-blue-400 text-white font-black shadow-inner'
+                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
+              }`}
+            >
+              <span className="text-sm">🚚</span>
+              <span className="text-[11px] font-bold truncate">Transport</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (onSelectPortalMode) {
                   onSelectPortalMode('admin');
-                  if (onCloseMobile) onCloseMobile();
-                }}
-                className="bg-[#062419] hover:bg-[#0c3827] border border-emerald-900 text-emerald-200 text-[10px] font-bold py-1.5 px-2 rounded-lg text-center transition-colors truncate"
-              >
-                🏛️ Admin
-              </button>
-            </div>
-          )}
+                } else {
+                  onSelectTab('grievances');
+                }
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className={`border rounded-xl p-2 flex items-center gap-1.5 text-left transition-all ${
+                activeTab === 'grievances' || activeTab === 'stock_inventory'
+                  ? 'bg-amber-800 border-amber-400 text-white font-black shadow-inner'
+                  : 'bg-[#051c14] hover:bg-[#082a1e] border-emerald-800/80 text-emerald-200'
+              }`}
+            >
+              <span className="text-sm">🏛️</span>
+              <span className="text-[11px] font-bold truncate">Admin</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>

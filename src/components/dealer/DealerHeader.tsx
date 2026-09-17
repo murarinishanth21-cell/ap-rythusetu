@@ -453,35 +453,52 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
 
       {/* Right Controls: District Selector, Notifications, Dealer Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* AP Unified Portal Navigation Switcher */}
+        {/* AP Unified Portal Navigation Switcher (Always visible, responsive, 1-click active state) */}
         {onSelectPortalMode && (
-          <div className="hidden xl:flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 shadow-2xs overflow-x-auto max-w-full">
             <button
               onClick={() => onSelectPortalMode('general', activeDistrict)}
-              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1 shrink-0 ${
+                _activeTab === 'market_trends' || _activeTab === 'ap_map'
+                  ? 'bg-emerald-800 text-white font-black shadow-xs'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+              }`}
               title="AP Mandi Market Trends & Heatmap"
             >
               <span>📈</span>
-              <span>Trends</span>
+              <span className="hidden sm:inline">Trends</span>
             </button>
             <button
               onClick={() => onSelectPortalMode('farmer', activeDistrict)}
-              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1 shrink-0 ${
+                _activeTab === 'farmer_sell' || _activeTab === 'profit_calc'
+                  ? 'bg-emerald-800 text-white font-black shadow-xs ring-1 ring-emerald-500'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+              }`}
               title="Farmer Sell Portal"
             >
               <span>🌾</span>
               <span>Farmer</span>
             </button>
             <button
-              className="px-2.5 py-1 text-[11px] font-black text-white bg-teal-800 rounded-xl shadow-xs flex items-center gap-1"
-              title="Current: Dealer Buy Portal"
+              onClick={() => onSelectPortalMode('dealer', activeDistrict)}
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1 shrink-0 ${
+                _activeTab === 'dashboard' || _activeTab === 'buy_produce' || _activeTab === 'deal_and_ask' || _activeTab === 'price_alerts'
+                  ? 'bg-teal-800 text-white font-black shadow-xs ring-1 ring-teal-500'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+              }`}
+              title="Dealer Procurement & Mandi Bids"
             >
               <span>🛒</span>
               <span>Dealer</span>
             </button>
             <button
               onClick={() => onSelectPortalMode('transport', activeDistrict)}
-              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1 shrink-0 ${
+                _activeTab === 'transport_vehicles' || _activeTab === 'warehouse_storage' || _activeTab === 'labour_hub'
+                  ? 'bg-blue-800 text-white font-black shadow-xs ring-1 ring-blue-500'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+              }`}
               title="Transport & Logistics Hub"
             >
               <span>🚚</span>
@@ -489,7 +506,11 @@ export const DealerHeader: React.FC<DealerHeaderProps> = ({
             </button>
             <button
               onClick={() => onSelectPortalMode('admin')}
-              className="px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 hover:bg-white rounded-xl transition-all flex items-center gap-1"
+              className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition-all flex items-center gap-1 shrink-0 ${
+                _activeTab === 'grievances' || _activeTab === 'stock_inventory'
+                  ? 'bg-amber-800 text-white font-black shadow-xs ring-1 ring-amber-500'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-white'
+              }`}
               title="Govt Agriculture Command Center"
             >
               <span>🏛️</span>
