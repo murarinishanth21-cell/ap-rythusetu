@@ -13,7 +13,10 @@ import {
   Info,
   MoreHorizontal,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Truck,
+  CheckCircle2,
+  Zap
 } from 'lucide-react';
 import type { FarmerListing, NegotiationOffer } from '../types';
 import { INITIAL_OFFER_HISTORY } from '../dealerData';
@@ -23,12 +26,14 @@ interface DealAndAskViewProps {
   listing?: FarmerListing;
   onBackToBuyProduce: () => void;
   onViewMarketTrends?: () => void;
+  onNavigateToTab?: (tab: string) => void;
 }
 
 export const DealAndAskView: React.FC<DealAndAskViewProps> = ({
   listing,
   onBackToBuyProduce,
-  onViewMarketTrends
+  onViewMarketTrends,
+  onNavigateToTab
 }) => {
   // Default to first listing if none provided
   const activeListing: FarmerListing = listing || {
@@ -565,6 +570,36 @@ export const DealAndAskView: React.FC<DealAndAskViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Book Transport Panel — visible when a deal is accepted */}
+        {offers.some(o => o.status === 'Accepted') && (
+          <div className="bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 rounded-3xl p-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Truck size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-slate-900">Farmer Accepted! Book Freight Pickup Now</h3>
+                  <span className="px-2 py-0.5 bg-green-100 text-green-800 text-[10px] font-black rounded-full border border-green-200 flex items-center gap-1">
+                    <CheckCircle2 size={9} />
+                    Deal Confirmed
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Post a freight job on the AP Captain Network. Nearest verified truck drivers will accept and arrive at the farm.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigateToTab ? onNavigateToTab('transport_vehicles') : alert('Go to Transport & Vehicles tab to post a freight job.')}
+              className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] shrink-0"
+            >
+              <Zap size={14} className="text-amber-300" />
+              Post Freight Job (Captain Network)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

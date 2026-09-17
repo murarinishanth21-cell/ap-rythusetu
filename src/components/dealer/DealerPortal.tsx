@@ -521,8 +521,10 @@ export const DealerPortal: React.FC<DealerPortalProps> = ({
               listing={selectedListingForDeal}
               onBackToBuyProduce={() => setActiveTab('buy_produce')}
               onViewMarketTrends={() => setActiveTab('market_trends')}
+              onNavigateToTab={(tab) => setActiveTab(tab as any)}
             />
           )}
+
 
           {activeTab === 'price_alerts' && (
             <PriceAlertsView
